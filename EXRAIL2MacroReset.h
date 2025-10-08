@@ -89,6 +89,7 @@
 #undef IFRANDOM 
 #undef IFRED
 #undef IFRESERVE
+#undef IFRESERVED
 #undef IFSTASH
 #undef IFSTASHED_HERE
 #undef IFTHROWN
@@ -663,6 +664,13 @@
  * @param token_id
  */
 #define IFRESERVE(token_id)
+/**
+ * @def IFRESERVED(token_id)
+ * @brief Checks if token is reserved
+ * @see IFRESERVE RESERVE FREE
+ * @param token_id
+ */
+#define IFRESERVED(token_id)
 /**
  * @def IFTIMEOUT
  * @brief Checks TIMEOUT state after an AT/AFTER request with timeout value.
