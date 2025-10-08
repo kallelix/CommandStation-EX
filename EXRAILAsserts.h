@@ -125,6 +125,8 @@ constexpr bool unsafePin(const int16_t value, const int16_t pos=0 ) {
 #define FREE(id) static_assert(id>=0 && id<MAX_FLAGS,"Id out of valid range 0-255" );
 #undef IFRESERVE
 #define IFRESERVE(id) static_assert(id>=0 && id<MAX_FLAGS,"Id out of valid range 0-255" );
+#undef IFRESERVED
+#define IFRESERVED(id) static_assert(id>=0 && id<MAX_FLAGS,"Id out of valid range 0-255" );
 
 //check speeds
 #undef SPEED
