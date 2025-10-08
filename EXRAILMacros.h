@@ -509,6 +509,7 @@ int RMFT2::onLCCLookup[RMFT2::countLCCLookup];
 #define IFRANDOM(percent) OPCODE_IFRANDOM,V(percent),
 #define IFRED(signal_id) OPCODE_IFRED,V(signal_id),
 #define IFRESERVE(block) OPCODE_IFRESERVE,V(block),
+#define IFRESERVED(block) OPCODE_IFRESERVED,V(block),
 #define IFSTASH(stash_id) OPCODE_IFSTASH,V(stash_id),
 #define IFSTASHED_HERE(stash_id) OPCODE_IFSTASHED_HERE,V(stash_id),
 #define IFTHROWN(turnout_id) OPCODE_IFTHROWN,V(turnout_id),

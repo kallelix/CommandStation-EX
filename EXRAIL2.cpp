@@ -805,6 +805,10 @@ void RMFT2::loop2() {
     if (!getFlag(operand,SECTION_FLAG)) setFlag(operand,SECTION_FLAG);
     else skipIf=true;
     break;
+
+  case OPCODE_IFRESERVED: // check RESERVED
+    skipIf=!getFlag(operand,SECTION_FLAG);
+    break;
     
   case OPCODE_IFRED: // do block if signal as expected
     skipIf=!isSignal(operand,SIGNAL_RED);
