@@ -2,6 +2,8 @@ ROSTER(3, "Default/New", "F0/F1/F2/F3/F4/F5/F6/F7")
 ROSTER(10, "V100/BR112", "Licht/Rot R/Rot F//Rangiergang")
 ROSTER(11, "V60/BR106", "Licht////Rangiergang")
 ROSTER(12, "V180/BR118", "Licht////Rangiergang")
+ROSTER(13,"VT135")
+ROSTER(14,"BR86")
 
 ALIAS(W_1, 101)
 ALIAS(W_2, 102)
@@ -32,16 +34,16 @@ TURNOUTL(W_12, W_12, "W12 Tunnel Nord Auffahrt")
 #include "myAlias.h"
 
 AUTOSTART
-POWERON
-DELAY(1000)
-CALL(303) // Alle Signale auf Halt
-// START(300)
-IF(GBM_G2)
-    ROUTE_INACTIVE(B_2_ROUND)
-ELSE
-    ROUTE_DISABLED(B_2_ROUND)
-ENDIF
-RETURN
+    POWERON
+    DELAY(1000)
+    CALL(303) // All signals to stop
+    CALL(305) // Init all turnouts to thrown position
+    IF(GBM_G2)
+        ROUTE_INACTIVE(B_2_ROUND)
+    ELSE
+        ROUTE_DISABLED(B_2_ROUND)
+    ENDIF
+DONE
 
 SEQUENCE(303)
     // Alle Signale auf Halt
@@ -85,6 +87,21 @@ ROUTE(304, "Stop all tasks")
     IFNOT(GBM_G8)
         FREE(B_8)
     ENDIF
+DONE
+
+SEQUENCE(305)
+    THROW(W_1)
+    THROW(W_2)
+    THROW(W_3)
+    THROW(W_4)
+    THROW(W_5)
+    THROW(W_6)
+    THROW(W_7)
+    THROW(W_8)
+    THROW(W_9)
+    THROW(W_10)
+    THROW(W_11)
+    THROW(W_12)
 DONE
 
 ONTHROW(W_1)
@@ -132,6 +149,21 @@ ONCLOSE(W_3)
     UNLATCH(PROG_TEST)
 DONE
 
+ONSENSOR(-1 * GBM_G4)
+    PRINT("Sensor GBM_G4 untriggered, freeing B_4")
+    FREE(B_4)
+DONE
+
+ONSENSOR(-1 * GBM_G2)
+    PRINT("Sensor GBM_G2 untriggered, freeing B_2")
+    FREE(B_2)
+DONE
+
+ONSENSOR(-1 * GBM_G1)
+    PRINT("Sensor GBM_G1 untriggered, freeing B_1")
+    FREE(B_1)
+DONE
+
 // Drive away a loco from the programming track: 989, 990, 991, 992, 993
 ROUTE(989, "Drive away loco from programming track to B2")
     THROW(W_3)
@@ -162,13 +194,13 @@ SEQUENCE(991)
         ENDIF
         PRINT("Loco on prog track")
         ACTIVATEL(SIG_SP_3)
-        DELAY(1000)
+        DELAY(700)
         DEACTIVATEL(SIG_SP_3)
-        DELAY(1000)
+        DELAY(700)
         ACTIVATEL(SIG_SP_3)
-        DELAY(1000)
+        DELAY(700)
         DEACTIVATEL(SIG_SP_3)
-        DELAY(1000)
+        DELAY(700)
         FOLLOW(992)
     ELSE
         FOLLOW(990)
@@ -187,31 +219,31 @@ SEQUENCE(992)
     // Licht an
     FON(0)
     DELAYRANDOM(500, 1000)
-    REV(50)
+    REV(60)
     START_SEND(B_4_VON_PROG)
     DELAY(5000)
     DEACTIVATEL(SIG_SP_3)
     AFTER(VON_PROG)
+    DELAY(1000)
     PRINT("Loco left prog track")
     ROUTE_ACTIVE(989)
 DONE
     
 SEQUENCE(B_4_VON_PROG)
     AT(GBM_G4)
-    PRINT("B_4: At G4")
+    PRINT("B_4_VON_PROG: At G4")
     DELAY(500)
     IFRESERVE(B_4)
-        RESERVE(B_4)
-        PRINT("B_4: Reserved B_4")
+        PRINT("B_4_VON_PROG: Reserved B_4")
     ENDIF
     DELAYRANDOM(2500, 3000)
     STOP
     DELAYRANDOM(1000, 2000)
-    PRINT("B_4: Unlatching VON_PROG")
+    PRINT("B_4_VON_PROG: Unlatching VON_PROG")
     UNLATCH(VON_PROG)
     DELAYRANDOM(1000, 2500)
     RESERVE(B_2)
-    PRINT("B_4: Reserved B_2")
+    PRINT("B_4_VON_PROG: Reserved B_2")
     THROW(W_3)
     DELAYRANDOM(1000, 2500)
     FWD(70)
@@ -258,14 +290,15 @@ DONE
 SEQUENCE(WAIT_AT_B_2)
     AT(GBM_G2)
     PRINT("WAIT_AT_B_2: At G2")
-    FREE(B_4)
-    PRINT("WAIT_AT_B_2: Freed B_4")
+    // try on sensor instead
+    // FREE(B_4)
+    // PRINT("WAIT_AT_B_2: Freed B_4")
     IFRESERVE(B_2)
         PRINT("WAIT_AT_B_2: Reserved B_2")
     ENDIF
     PRINT("WAIT_AT_B_2: Loco was driven from programming track. Waiting...")
     RESET(ABC_G2)
-    DELAY(3000)
+    DELAYRANDOM(3000, 5000)
     STOP
     FOFF(0)
     SET(ABC_G2)
@@ -280,11 +313,11 @@ SEQUENCE(B_2)
     PRINT("B_2: At G2")
     FREE(B_4)
     PRINT("B_2: Freed B_4")
-    SAVESPEED
+    //SAVESPEED
     IFRESERVE(B_2)
         PRINT("B_2: Reserved B_2")
     ENDIF
-    SLOWDOWN_REL(50)
+    //SLOWDOWN_REL(50)
     DELAYRANDOM(500, 1500)
     IFRANDOM(30)
         RESET(ABC_G2)
@@ -295,7 +328,7 @@ SEQUENCE(B_2)
     CLOSE(W_1)
     DELAYRANDOM(500, 2000)
     SET(ABC_G2)
-    RESTORESPEED
+    //RESTORESPEED
     //IF(GBM_G2)
     //    AFTER(GBM_G2)
     //ENDIF
@@ -337,8 +370,8 @@ AUTOMATION(B_2_ZU_B_3, "B_2 to B_3")
     FWD(70)
     AT(GBM_G1)
     PRINT("At G1 from Bhf")
-    FREE(B_2)
-    PRINT("Freed B_2 by B_2_ZU_B_3")
+    //FREE(B_2)
+    //PRINT("Freed B_2 by B_2_ZU_B_3")
     IFRESERVE(B_1)
         PRINT("Reserved B_1 by B_2_ZU_B_3")
     ENDIF
@@ -347,19 +380,20 @@ AUTOMATION(B_2_ZU_B_3, "B_2 to B_3")
     RESERVE(B_3)
     PRINT("Reserved B_3 by B_2_ZU_B_3")
     THROW(W_1)
+    THROW(W_2)
     DELAYRANDOM(500, 2000)
     REV(70)
     AT(GBM_G3)
     PRINT("B_2_ZU_B_3: At G3")
     DELAY(500)
-    FREE(B_1)
-    PRINT("B_2_ZU_B_3: Freed B_1")
+    //FREE(B_1)
+    //PRINT("B_2_ZU_B_3: Freed B_1")
     IFRESERVE(B_3)
         PRINT("B_2_ZU_B_3: Reserved B_3")
     ENDIF
     PRINT("B_2_ZU_B_3: Loco was driven B_2_ZU_B_3. Waiting...")
     RESET(ABC_G3)
-    DELAY(3000)
+    DELAYRANDOM(3000, 5000)
     STOP
     FOFF(0)
     SET(ABC_G3)
@@ -367,10 +401,11 @@ AUTOMATION(B_2_ZU_B_3, "B_2 to B_3")
 DONE
 
 AUTOMATION(B_3_ZU_B_2, "B_3 to B_2")
-    PRINT("B_3_ZU_B_2: Do a round trip")
+    PRINT("B_3_ZU_B_2: Do a trip")
     ROUTE_DISABLED(B_3_ZU_B_2)
     RESERVE(B_1)
     PRINT("B_3_ZU_B_2: Reserved B_1")
+    THROW(W_2)
     THROW(W_1)
     FON(0)
     DELAYRANDOM(500, 2000)
@@ -389,8 +424,8 @@ DONE
 SEQUENCE(B_1_VON_BHF)
     AT(GBM_G1)
     PRINT("At G1 from Bhf")
-    FREE(B_2)
-    PRINT("Freed B_2 by B_1")
+    //FREE(B_2)
+    //PRINT("Freed B_2 by B_1")
     IFRESERVE(B_1)
         PRINT("Reserved B_1 by B_1_FROM_BHF")
     ENDIF
@@ -429,8 +464,8 @@ SEQUENCE(B_8)
     IFRESERVE(B_8)
         PRINT("Reserved B_8 by B_8")
     ENDIF
-    FREE(B_1)
-    PRINT("Freed B_1 by B_8")
+    //FREE(B_1)
+    //PRINT("Freed B_1 by B_8")
     DELAY(1000)
     RESET(ABC_G8)
     DELAYRANDOM( 5000, 15000)
@@ -463,8 +498,8 @@ SEQUENCE(B_7)
     IFRESERVE(B_7)
         PRINT("Reserved B_7 by B_7")
     ENDIF
-    FREE(B_1)
-    PRINT("Freed B_1 by B_7")
+    //FREE(B_1)
+    //PRINT("Freed B_1 by B_7")
     RESET(ABC_G7)
     DELAYRANDOM( 5000, 15000)
     RESERVE(B_4)
