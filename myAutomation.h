@@ -2,8 +2,8 @@ ROSTER(3, "Default/New", "F0/F1/F2/F3/F4/F5/F6/F7")
 ROSTER(10, "V100/BR112", "Licht/Rot R/Rot F//Rangiergang")
 ROSTER(11, "V60/BR106", "Licht////Rangiergang")
 ROSTER(12, "V180/BR118", "Licht////Rangiergang")
-ROSTER(13,"VT135")
-ROSTER(14,"BR86")
+ROSTER(13,"BR86", "Licht////Rangiergang")
+ROSTER(14,"VT135", "Licht////Rangiergang")
 
 ALIAS(W_1, 101)
 ALIAS(W_2, 102)
@@ -36,25 +36,22 @@ TURNOUTL(W_12, W_12, "W12 Tunnel Nord Auffahrt")
 AUTOSTART
     POWERON
     DELAY(1000)
-    CALL(303) // All signals to stop
+    CALL(303) // Initialize signals
     CALL(305) // Init all turnouts to thrown position
-    IF(GBM_G2)
-        ROUTE_INACTIVE(B_2_ROUND)
-    ELSE
-        ROUTE_DISABLED(B_2_ROUND)
-    ENDIF
 DONE
 
 SEQUENCE(303)
-    // Alle Signale auf Halt
-    DEACTIVATEL(SIG_SP_2)
-    DEACTIVATEL(SIG_SP_3)
-    DEACTIVATEL(SIG_HS_5)
-    DEACTIVATEL(SIG_VS_5)
+    CALL(SIG_SP_2_TEST)
+    CALL(GBM_G2)
+    CALL(GBM_G3)
+    CALL(GBM_G4)
+    CALL(GBM_G5)
+    CALL(GBM_G6)
+    CALL(GBM_G12)
 RETURN
 
 ROUTE(301, "Pause")
-PAUSE
+    PAUSE
 DONE
 
 ROUTE(302, "Resume")
@@ -87,6 +84,7 @@ ROUTE(304, "Stop all tasks")
     IFNOT(GBM_G8)
         FREE(B_8)
     ENDIF
+    ROUTE_INACTIVE(B_2_ROUND)
 DONE
 
 SEQUENCE(305)
@@ -107,24 +105,61 @@ DONE
 ONTHROW(W_1)
     PRINT("W1 thrown")
     CALL(SIG_SP_2_TEST)
+    RESET(ABC_G2)
+    IFTHROWN(W_2)
+        ACTIVATEL(SIG_SP_6)
+    ENDIF
+    CALL(SIG_HS_SP_1_TEST)
 DONE
 
 ONCLOSE(W_1)
     PRINT("W1 closed")
     CALL(SIG_SP_2_TEST)
+    DEACTIVATEL(SIG_SP_6)
+    CALL(SIG_HS_SP_1_TEST)
 DONE
+
+SEQUENCE(SIG_HS_SP_1_TEST)
+    DELAY(700)
+    IFTHROWN(W_1)
+        DEACTIVATEL(SIG_HS_1)
+    ELSE
+        IF(GBM_G10)
+            DEACTIVATEL(SIG_HS_1)
+        ELSE
+            IF(GBM_G1)
+                DEACTIVATEL(SIG_SP_1)
+            ELSE  
+                IF(GBM_G7)
+                    IF(GBM_G8)
+                        ACTIVATEL(SIG_SP_1)
+                    ELSE
+                        ACTIVATEL(SIG_HS_1)
+                    ENDIF
+                ELSE
+                    ACTIVATEL(SIG_HS_1)
+                ENDIF
+            ENDIF
+        ENDIF
+    ENDIF   
+RETURN
 
 ONTHROW(W_2)
     PRINT("W2 thrown")
     CALL(SIG_SP_2_TEST)
+    IFTHROWN(W_1)
+        ACTIVATEL(SIG_SP_6)
+    ENDIF
 DONE
 
 ONCLOSE(W_2)
     PRINT("W2 closed")
     CALL(SIG_SP_2_TEST)
+    DEACTIVATEL(SIG_SP_6)
 DONE
 
 SEQUENCE(SIG_SP_2_TEST)
+    DELAY(700)
     IFTHROWN(W_1)
         IFCLOSED(W_2)
             ACTIVATEL(SIG_SP_2)
@@ -139,35 +174,299 @@ RETURN
 ONTHROW(W_3)
     PRINT("W3 thrown")
     DEACTIVATEL(SIG_SP_3)
+    IFNOT(GBM_G4)
+        IFNOT(GBM_G12)
+            ACTIVATEL(SIG_SP_4)
+        ENDIF
+    ENDIF
     UNJOIN
     LATCH(PROG_TEST)
 DONE
 
 ONCLOSE(W_3)
     PRINT("W3 closed")
+    DEACTIVATEL(SIG_HS_2)
+    DEACTIVATEL(SIG_SP_4)
     JOIN
     UNLATCH(PROG_TEST)
 DONE
 
-ONSENSOR(-1 * GBM_G4)
-    PRINT("Sensor GBM_G4 untriggered, freeing B_4")
-    FREE(B_4)
+ONSENSOR(GBM_G1)
+    CALL(GBM_G1)
 DONE
 
-ONSENSOR(-1 * GBM_G2)
-    PRINT("Sensor GBM_G2 untriggered, freeing B_2")
-    FREE(B_2)
+SEQUENCE(GBM_G1)
+    IF(GBM_G1)
+        PRINT("Sensor GBM_G1 triggered")
+    ELSE
+        PRINT("Sensor GBM_G1 untriggered")
+        DELAY(500)
+        IFNOT(GBM_G1)
+            PRINT("Sensor GBM_G1 still untriggered, freeing B_1")
+            FREE(B_1)
+        ENDIF
+    ENDIF
+RETURN
+
+ONSENSOR(GBM_G2)
+    CALL(GBM_G2)
 DONE
 
-ONSENSOR(-1 * GBM_G1)
-    PRINT("Sensor GBM_G1 untriggered, freeing B_1")
-    FREE(B_1)
+SEQUENCE(GBM_G2)
+    IF(GBM_G2)
+        PRINT("Sensor GBM_G2 triggered")
+        // Debounce
+        DELAY(200)
+        IF(GBM_G2)
+            PRINT("Sensor GBM_G2 still triggered, deactivating SIG_HS_2")
+            DEACTIVATEL(SIG_HS_2)
+            // Better not do this here, because reservation will be anonymous then
+            //IFRESERVE(B_2)
+            //    PRINT("Sensor GBM_G2: Reserved B_2")
+            //ENDIF
+        ENDIF
+    ELSE
+        PRINT("Sensor GBM_G2 untriggered")
+        // Debounce
+        DELAY(200)
+        IFNOT(GBM_G2)
+            PRINT("Sensor GBM_G2 still untriggered, activating SIG_HS_2 and freeing B_2")
+            IFNOT(GBM_G12)
+                ACTIVATEL(SIG_HS_2)
+            ENDIF
+            FREE(B_2)
+            SET(ABC_G4)
+        ENDIF
+    ENDIF
+RETURN
+
+ONSENSOR(GBM_G3)
+    CALL(GBM_G3)
 DONE
+
+SEQUENCE(GBM_G3)
+    IF(GBM_G3)
+        PRINT("Sensor GBM_G3 triggered")
+        // Debounce
+        DELAY(200)
+        IF(GBM_G3)
+            // Better not do this here, because reservation will be anonymous then
+            //PRINT("Sensor GBM_G3 still triggered, reserving B_3")
+            //IFRESERVE(B_3)
+            //    PRINT("Sensor GBM_G3: Reserved B_3")
+            //ENDIF
+            IF(GBM_G5)
+                PRINT("Sensor GBM_G3: Break to wait for B_5 to clear")
+                RESET(ABC_G3)
+            ENDIF
+        ENDIF
+    ELSE
+        PRINT("Sensor GBM_G3 untriggered")
+        // Debounce
+        DELAY(200)
+        IFNOT(GBM_G3)
+            PRINT("Sensor GBM_G3 still untriggered, freeing B_3")
+            FREE(B_3)
+        ENDIF
+    ENDIF
+RETURN
+
+ONSENSOR(GBM_G4)
+    CALL(GBM_G4)
+DONE
+
+SEQUENCE(GBM_G4)
+    IF(GBM_G4)
+        PRINT("Sensor GBM_G4 triggered")
+        // Debounce
+        DELAY(200)
+        IF(GBM_G4)
+            PRINT("Sensor GBM_G4 still triggered, reserving B_4")
+            DEACTIVATEL(SIG_SP_4)
+            // Better not do this here, because reservation will be anonymous then
+            //IFRESERVE(B_4)
+            //    PRINT("Sensor GBM_G4: Reserved B_4")
+            //ENDIF
+            IF(GBM_G2)
+                IFTHROWN(W_3)
+                    PRINT("Sensor GBM_G4: Break to wait for B_2 to clear")
+                    RESET(ABC_G4)
+                ENDIF
+            ENDIF
+        ENDIF
+    ELSE
+        PRINT("Sensor GBM_G4 untriggered")
+        // Debounce
+        DELAY(200)
+        IFNOT(GBM_G4)
+            PRINT("Sensor GBM_G4 still untriggered, freeing B_4")
+            IFNOT(GBM_G12)
+                ACTIVATEL(SIG_SP_4)
+            ENDIF
+            FREE(B_4)
+        ENDIF
+    ENDIF
+RETURN
+
+ONSENSOR(GBM_G12)
+    CALL(GBM_G12)
+DONE
+
+SEQUENCE(GBM_G12)
+    IF(GBM_G12)
+        PRINT("Sensor GBM_G12 triggered")
+        // Debounce
+        DELAY(200)
+        IF(GBM_G12)
+            PRINT("Sensor GBM_G12 still triggered")
+            DEACTIVATEL(SIG_HS_2)
+            DEACTIVATEL(SIG_SP_4)
+        ENDIF
+    ELSE
+        PRINT("Sensor GBM_G12 untriggered")
+        // Debounce
+        DELAY(200)
+        IFNOT(GBM_G12)
+            PRINT("Sensor GBM_G12 still untriggered")
+            IFNOT(GBM_G2)
+                ACTIVATEL(SIG_HS_2)
+            ENDIF
+            IFNOT(GBM_G4)
+                ACTIVATEL(SIG_SP_4)
+            ENDIF
+        ENDIF
+    ENDIF
+RETURN
+
+ONSENSOR(GBM_G5)
+    CALL(GBM_G5)
+DONE
+
+SEQUENCE(GBM_G5)
+    IF(GBM_G5)
+        PRINT("Sensor GBM_G5 triggered")
+        // Debounce
+        DELAY(200)
+        IF(GBM_G5)
+            PRINT("Sensor GBM_G5 still triggered, deactivating SIG_HS_5")
+            DEACTIVATEL(SIG_HS_5)
+            // Better not do this here, because reservation will be anonymous then
+            //IFRESERVE(B_5)
+            //    PRINT("Sensor GBM_G5: Reserved B_5")
+            //ENDIF
+            IF(GBM_G6)
+                PRINT("Sensor GBM_G5: Break to wait for B_6 to clear")
+                RESET(ABC_G5)
+            ENDIF
+        ENDIF
+    ELSE
+        PRINT("Sensor GBM_G5 untriggered")
+        // Debounce
+        DELAY(200)
+        IFNOT(GBM_G5)
+            PRINT("Sensor GBM_G5 still untriggered, activating SIG_HS_5 and freeing B_5")
+            ACTIVATEL(SIG_HS_5)
+            FREE(B_5)
+        ENDIF
+    ENDIF
+RETURN
+
+ONSENSOR(GBM_G6)
+    CALL(GBM_G6)
+DONE
+
+SEQUENCE(GBM_G6)
+    IF(GBM_G6)
+        PRINT("Sensor GBM_G6 triggered")
+        // Debounce
+        DELAY(200)
+        IF(GBM_G6)
+            PRINT("Sensor GBM_G6 still triggered, deactivating SIG_VS_5, deactivating SIG_HS_6")
+            DEACTIVATEL(SIG_VS_5)
+            DEACTIVATEL(SIG_HS_6)
+            // Better not do this here, because reservation will be anonymous then
+            //IFRESERVE(B_6)
+            //    PRINT("Sensor GBM_G6: Reserved B_6")
+            //ENDIF
+            IF(GBM_G1)
+                PRINT("Sensor GBM_G6: Break to wait for B_1 to clear")
+                RESET(ABC_G6)
+            ENDIF
+            IFTHROWN(W_10)
+                PRINT("Sensor GBM_G6: Break to wait for W_10 to be closed")
+                RESET(ABC_G6)
+            ENDIF
+        ENDIF
+    ELSE
+        PRINT("Sensor GBM_G6 untriggered")
+        // Debounce
+        DELAY(200)
+        IFNOT(GBM_G6)
+            PRINT("Sensor GBM_G6 still untriggered, activating SIG_VS_5, activating SIG_HS_6 and freeing B_6")
+            ACTIVATEL(SIG_VS_5)
+            ACTIVATEL(SIG_HS_6)
+            FREE(B_6)
+        ENDIF
+    ENDIF
+RETURN
+
+ONSENSOR(GBM_G7)
+    CALL(GBM_G7)
+DONE
+
+SEQUENCE(GBM_G7)
+    IF(GBM_G7)
+        PRINT("Sensor GBM_G7 triggered")
+        // Debounce
+        DELAY(500)
+        IF(GBM_G7)
+            //PRINT("Sensor GBM_G7 still triggered, reserving B_7")
+            //IFRESERVE(B_7)
+            //    PRINT("Sensor GBM_G7: Reserved B_7")
+            //ENDIF
+        ENDIF
+    ELSE
+        PRINT("Sensor GBM_G7 untriggered")
+        // Debounce
+        DELAY(500)
+        IFNOT(GBM_G7)
+            PRINT("Sensor GBM_G7 still untriggered, freeing B_7")
+            FREE(B_7)
+        ENDIF
+    ENDIF
+RETURN
+
+ONSENSOR(GBM_G8)
+    CALL(GBM_G8)
+DONE
+
+SEQUENCE(GBM_G8)
+    IF(GBM_G8)
+        PRINT("Sensor GBM_G8 triggered")
+        // Debounce
+        DELAY(500)
+        IF(GBM_G8)
+            PRINT("Sensor GBM_G8 still triggered, reserving B_8")
+            // Better not do this here, because reservation will be anonymous then
+            //IFRESERVE(B_8)
+            //    PRINT("Sensor GBM_G8: Reserved B_8")
+            //ENDIF
+        ENDIF
+    ELSE
+        PRINT("Sensor GBM_G8 untriggered")
+        // Debounce
+        DELAY(500)
+        IFNOT(GBM_G8)
+            PRINT("Sensor GBM_G8 still untriggered, freeing B_8")
+            FREE(B_8)
+        ENDIF
+    ENDIF
+RETURN
 
 // Drive away a loco from the programming track: 989, 990, 991, 992, 993
 ROUTE(989, "Drive away loco from programming track to B2")
     THROW(W_3)
-    ROUTE_INACTIVE(989)
+    ROUTE_ACTIVE(989)
     FOLLOW(990)
 DONE
 
@@ -189,7 +488,7 @@ SEQUENCE(991)
     IF(PROG_TEST)
         READ_LOCO
         IFLOCO(-1) // failed read
-            DELAY(5000)
+            DELAY(10000)
             FOLLOW(991)
         ENDIF
         PRINT("Loco on prog track")
@@ -208,8 +507,16 @@ SEQUENCE(991)
 DONE
 
 SEQUENCE(992)
-    PRINT("Driving loco off programming track")
-    RESERVE(B_4)
+    PRINT("Driving loco off programming track...")
+    IFRESERVE(B_4)
+        PRINT("992: Instant reserved B_4")
+        DELAY(1000)
+    ELSE
+        PRINT("992: Waiting to reserve B_4")
+        RESERVE(B_4)
+        PRINT("992: Reserved B_4. Waiting for security delay, because B_4 was just freed")
+        DELAY(7000)
+    ENDIF
     LATCH(VON_PROG)
     CLOSE(W_3)
     ACTIVATEL(SIG_SP_3)
@@ -223,10 +530,11 @@ SEQUENCE(992)
     START_SEND(B_4_VON_PROG)
     DELAY(5000)
     DEACTIVATEL(SIG_SP_3)
+    // todo: check of after is working here, may use AT(-1 * VON_PROG) instead
     AFTER(VON_PROG)
     DELAY(1000)
     PRINT("Loco left prog track")
-    ROUTE_ACTIVE(989)
+    ROUTE_INACTIVE(989)
 DONE
     
 SEQUENCE(B_4_VON_PROG)
@@ -258,27 +566,36 @@ DONE
 SEQUENCE(B_4)
     AT(GBM_G4)
     PRINT("B_4: At G4")
-    IF(FREE_B_7)
-        FREE(B_7)
-        UNLATCH(FREE_B_7)
-        PRINT("B_4: Freed B_7")
-    ENDIF
-    IF(FREE_B_8)
-        FREE(B_8)
-        UNLATCH(FREE_B_8)
-        PRINT("B_4: Freed B_8")
-    ENDIF
+    //IF(FREE_B_7)
+    //    FREE(B_7)
+    //    UNLATCH(FREE_B_7)
+    //    PRINT("B_4: Freed B_7")
+    //ENDIF
+    //IF(FREE_B_8)
+    //    FREE(B_8)
+    //    UNLATCH(FREE_B_8)
+    //    PRINT("B_4: Freed B_8")
+    //ENDIF
     DELAY(500)
     IFRESERVE(B_4)
-        RESERVE(B_4)
         PRINT("B_4: Reserved B_4")
     ENDIF
-    IF(GBM_G2)
+    IFRESERVE(B_2)
+        PRINT("B_4: Reserved B_2")
+    ELSE
+        PRINT("B_4: Waiting to reserve B_2")        
+        // ONSENSOR(GBM_G4) should did this already
         RESET(ABC_G4)
+        DELAY(5000)
+        RESERVE(B_2)
+        PRINT("B_4: Reserved B_2 after wait")        
     ENDIF
-    RESERVE(B_2)
-    PRINT("B_4: Reserved B_2")
-    THROW(W_3)
+    IFCLOSED(W_3)
+        THROW(W_3)
+        DELAY(3000)
+    ENDIF
+    SET(ABC_G4)
+    DELAY(2000)
     FOLLOW(B_2)
     //IF(GBM_G4)
     //    AFTER(GBM_G4)
@@ -311,23 +628,55 @@ DONE
 SEQUENCE(B_2)
     AT(GBM_G2)
     PRINT("B_2: At G2")
-    FREE(B_4)
-    PRINT("B_2: Freed B_4")
+    //FREE(B_4)
+    //PRINT("B_2: Freed B_4")
     //SAVESPEED
     IFRESERVE(B_2)
         PRINT("B_2: Reserved B_2")
     ENDIF
     //SLOWDOWN_REL(50)
-    DELAYRANDOM(500, 1500)
-    IFRANDOM(30)
+    //DELAYRANDOM(500, 1500)
+    IF(GBM_G1)
+        PRINT("B_2: GBM_G1 occupied, waiting...")
+        // todo: move to GBM_G1 ONSENSOR
+        IF(GBM_G10)
+            DEACTIVATEL(SIG_HS_1)
+        ELSE
+            DEACTIVATEL(SIG_SP_1)
+        ENDIF
         RESET(ABC_G2)
-        DELAYRANDOM(5000, 15000)
+        DELAYRANDOM(5000, 20000)
+    ELSE
+        IF(GBM_G10)
+            DEACTIVATEL(SIG_HS_1)
+            RESET(ABC_G2)
+            DELAYRANDOM(5000, 20000)
+        ELSE
+            DEACTIVATEL(SIG_SP_1)
+            IFRANDOM(70)
+                RESET(ABC_G2)
+                DELAYRANDOM(10000, 30000)
+            ELSE
+                IFTHROWN(W_1)
+                    RESET(ABC_G2)
+                    DELAYRANDOM(5000, 10000)
+                    CLOSE(W_1)
+                    DELAYRANDOM(2000, 4000)
+                ENDIF
+            ENDIF
+        ENDIF
     ENDIF
     RESERVE(B_1)
+    // GBM_G10 könnte noch belegt sein, oder?
     PRINT("B_2: Reserved B_1")
-    CLOSE(W_1)
-    DELAYRANDOM(500, 2000)
+    IFTHROWN(W_1)
+        CLOSE(W_1)
+        DELAY(2000)
+    ENDIF
+    CALL(SIG_HS_SP_1_TEST)
+    DELAYRANDOM(3000, 5000)
     SET(ABC_G2)
+    DELAY(1000)
     //RESTORESPEED
     //IF(GBM_G2)
     //    AFTER(GBM_G2)
@@ -338,13 +687,18 @@ SEQUENCE(B_2)
 DONE
 
 AUTOMATION(B_2_ROUND, "B_2 round trip")
-    PRINT("B_2: Do a round trip")
+    PRINT("B_2_ROUND: Do a round trip")
     ROUTE_DISABLED(B_2_ROUND)
     RESERVE(B_1)
-    PRINT("B_2: Reserved B_1")
-    CLOSE(W_1)
+    PRINT("B_2_ROUND: Reserved B_1")
+    IFTHROWN(W_1)
+        CLOSE(W_1)
+        DELAY(2000)
+    ENDIF
+    CALL(SIG_HS_SP_1_TEST)
+    DELAYRANDOM(3000, 5000)
     FON(0)
-    DELAYRANDOM(500, 2000)
+    DELAYRANDOM(3000, 5000)
     SET(ABC_G2)
     FWD(70)
     ROUTE_INACTIVE(B_2_ROUND)
@@ -362,10 +716,11 @@ AUTOMATION(B_2_ZU_B_3, "B_2 to B_3")
     PRINT("B_2_ZU_B_3: Do a trip to B_3")
     ROUTE_DISABLED(B_2_ZU_B_3)
     RESERVE(B_1)
+    CALL(SIG_HS_SP_1_TEST)
     PRINT("B_2_ZU_B_3: Reserved B_1")
     CLOSE(W_1)
     FON(0)
-    DELAYRANDOM(500, 2000)
+    DELAYRANDOM(1000, 2000)
     SET(ABC_G2)
     FWD(70)
     AT(GBM_G1)
@@ -429,12 +784,13 @@ SEQUENCE(B_1_VON_BHF)
     IFRESERVE(B_1)
         PRINT("Reserved B_1 by B_1_FROM_BHF")
     ENDIF
+    DELAY(1000)
     IFRESERVE(B_8)
         PRINT("Reserved B_8 by B_1_FROM_BHF")
         FOLLOW(B_8)
     ELSE
         IFRESERVE(B_7)
-            PRINT("Reserved B_7 by B_1")
+            PRINT("Reserved B_7 by B_1_FROM_BHF")
             FOLLOW(B_7)
         ELSE
             RESET(ABC_G9)
@@ -443,8 +799,8 @@ SEQUENCE(B_1_VON_BHF)
                 PRINT("Reserved B_7 by B_1_FROM_BHF")
                 FOLLOW(B_7)
             ELSE
-                PRINT("Reserved B_8 by B_1_FROM_BHF")
                 RESERVE(B_8)
+                PRINT("Reserved B_8 by B_1_FROM_BHF")
                 FOLLOW(B_8)
             ENDIF
         ENDIF
@@ -467,13 +823,15 @@ SEQUENCE(B_8)
     //FREE(B_1)
     //PRINT("Freed B_1 by B_8")
     DELAY(1000)
-    RESET(ABC_G8)
-    DELAYRANDOM( 5000, 15000)
+    IFRANDOM(50)
+        RESET(ABC_G8)
+        DELAYRANDOM( 5000, 30000)
+    ENDIF
     RESERVE(B_4)
     PRINT("Reserved B_4 by B_8")
     THROW(W_4)
     SET(ABC_G8)
-    LATCH(FREE_B_8)
+    //LATCH(FREE_B_8)
     /*
     IF(GBM_G8)
         AFTER(GBM_G8)
@@ -481,6 +839,7 @@ SEQUENCE(B_8)
     FREE(B_8)
     PRINT("Freed B_8 by B_8")
     */
+    DELAY(1000)
     FOLLOW(B_4)
 DONE
 
@@ -500,13 +859,15 @@ SEQUENCE(B_7)
     ENDIF
     //FREE(B_1)
     //PRINT("Freed B_1 by B_7")
-    RESET(ABC_G7)
-    DELAYRANDOM( 5000, 15000)
+    IFRANDOM(50)
+        RESET(ABC_G7)
+        DELAYRANDOM( 5000, 30000)
+    ENDIF
     RESERVE(B_4)
     PRINT("Reserved B_4 by B_7")
     CLOSE(W_4)
     SET(ABC_G7)
-    LATCH(FREE_B_7)
+    //LATCH(FREE_B_7)
     /*
     IF(GBM_G7)
         AFTER(GBM_G7)
@@ -514,5 +875,6 @@ SEQUENCE(B_7)
     FREE(B_7)
     PRINT("Freed B_7 by B_7")
     */
+    DELAY(1000)
     FOLLOW(B_4)
 DONE
