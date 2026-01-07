@@ -200,7 +200,7 @@ SEQUENCE(GBM_G1)
         PRINT("Sensor GBM_G1 triggered")
     ELSE
         PRINT("Sensor GBM_G1 untriggered")
-        DELAY(500)
+        DELAY(1000)
         IFNOT(GBM_G1)
             PRINT("Sensor GBM_G1 still untriggered, freeing B_1")
             FREE(B_1)
@@ -216,7 +216,7 @@ SEQUENCE(GBM_G2)
     IF(GBM_G2)
         PRINT("Sensor GBM_G2 triggered")
         // Debounce
-        DELAY(200)
+        DELAY(500)
         IF(GBM_G2)
             PRINT("Sensor GBM_G2 still triggered, deactivating SIG_HS_2")
             DEACTIVATEL(SIG_HS_2)
@@ -228,14 +228,14 @@ SEQUENCE(GBM_G2)
     ELSE
         PRINT("Sensor GBM_G2 untriggered")
         // Debounce
-        DELAY(200)
+        DELAY(1000)
         IFNOT(GBM_G2)
             PRINT("Sensor GBM_G2 still untriggered, activating SIG_HS_2 and freeing B_2")
             IFNOT(GBM_G12)
                 ACTIVATEL(SIG_HS_2)
+                SET(ABC_G4)
             ENDIF
             FREE(B_2)
-            SET(ABC_G4)
         ENDIF
     ENDIF
 RETURN
@@ -248,7 +248,7 @@ SEQUENCE(GBM_G3)
     IF(GBM_G3)
         PRINT("Sensor GBM_G3 triggered")
         // Debounce
-        DELAY(200)
+        DELAY(500)
         IF(GBM_G3)
             // Better not do this here, because reservation will be anonymous then
             //PRINT("Sensor GBM_G3 still triggered, reserving B_3")
@@ -263,7 +263,7 @@ SEQUENCE(GBM_G3)
     ELSE
         PRINT("Sensor GBM_G3 untriggered")
         // Debounce
-        DELAY(200)
+        DELAY(1000)
         IFNOT(GBM_G3)
             PRINT("Sensor GBM_G3 still untriggered, freeing B_3")
             FREE(B_3)
@@ -279,7 +279,7 @@ SEQUENCE(GBM_G4)
     IF(GBM_G4)
         PRINT("Sensor GBM_G4 triggered")
         // Debounce
-        DELAY(200)
+        DELAY(500)
         IF(GBM_G4)
             PRINT("Sensor GBM_G4 still triggered, reserving B_4")
             DEACTIVATEL(SIG_SP_4)
@@ -293,11 +293,15 @@ SEQUENCE(GBM_G4)
                     RESET(ABC_G4)
                 ENDIF
             ENDIF
+            IF(GBM_G12)
+                PRINT("Sensor GBM_G4: Break to wait for GBM_G12 to clear")
+                RESET(ABC_G4)
+            ENDIF
         ENDIF
     ELSE
         PRINT("Sensor GBM_G4 untriggered")
         // Debounce
-        DELAY(200)
+        DELAY(1000)
         IFNOT(GBM_G4)
             PRINT("Sensor GBM_G4 still untriggered, freeing B_4")
             IFNOT(GBM_G12)
@@ -316,7 +320,7 @@ SEQUENCE(GBM_G12)
     IF(GBM_G12)
         PRINT("Sensor GBM_G12 triggered")
         // Debounce
-        DELAY(200)
+        DELAY(500)
         IF(GBM_G12)
             PRINT("Sensor GBM_G12 still triggered")
             DEACTIVATEL(SIG_HS_2)
@@ -325,11 +329,12 @@ SEQUENCE(GBM_G12)
     ELSE
         PRINT("Sensor GBM_G12 untriggered")
         // Debounce
-        DELAY(200)
+        DELAY(1000)
         IFNOT(GBM_G12)
             PRINT("Sensor GBM_G12 still untriggered")
             IFNOT(GBM_G2)
                 ACTIVATEL(SIG_HS_2)
+                SET(ABC_G4)
             ENDIF
             IFNOT(GBM_G4)
                 ACTIVATEL(SIG_SP_4)
@@ -346,7 +351,7 @@ SEQUENCE(GBM_G5)
     IF(GBM_G5)
         PRINT("Sensor GBM_G5 triggered")
         // Debounce
-        DELAY(200)
+        DELAY(500)
         IF(GBM_G5)
             PRINT("Sensor GBM_G5 still triggered, deactivating SIG_HS_5")
             DEACTIVATEL(SIG_HS_5)
@@ -362,7 +367,7 @@ SEQUENCE(GBM_G5)
     ELSE
         PRINT("Sensor GBM_G5 untriggered")
         // Debounce
-        DELAY(200)
+        DELAY(1000)
         IFNOT(GBM_G5)
             PRINT("Sensor GBM_G5 still untriggered, activating SIG_HS_5 and freeing B_5")
             ACTIVATEL(SIG_HS_5)
@@ -379,7 +384,7 @@ SEQUENCE(GBM_G6)
     IF(GBM_G6)
         PRINT("Sensor GBM_G6 triggered")
         // Debounce
-        DELAY(200)
+        DELAY(500)
         IF(GBM_G6)
             PRINT("Sensor GBM_G6 still triggered, deactivating SIG_VS_5, deactivating SIG_HS_6")
             DEACTIVATEL(SIG_VS_5)
@@ -400,7 +405,7 @@ SEQUENCE(GBM_G6)
     ELSE
         PRINT("Sensor GBM_G6 untriggered")
         // Debounce
-        DELAY(200)
+        DELAY(1000)
         IFNOT(GBM_G6)
             PRINT("Sensor GBM_G6 still untriggered, activating SIG_VS_5, activating SIG_HS_6 and freeing B_6")
             ACTIVATEL(SIG_VS_5)
@@ -428,10 +433,10 @@ SEQUENCE(GBM_G7)
     ELSE
         PRINT("Sensor GBM_G7 untriggered")
         // Debounce
-        DELAY(500)
+        DELAY(1000)
         IFNOT(GBM_G7)
-            PRINT("Sensor GBM_G7 still untriggered, freeing B_7")
-            FREE(B_7)
+            //PRINT("Sensor GBM_G7 still untriggered, freeing B_7")
+            //FREE(B_7)
         ENDIF
     ENDIF
 RETURN
@@ -446,7 +451,7 @@ SEQUENCE(GBM_G8)
         // Debounce
         DELAY(500)
         IF(GBM_G8)
-            PRINT("Sensor GBM_G8 still triggered, reserving B_8")
+            PRINT("Sensor GBM_G8 still triggered")
             // Better not do this here, because reservation will be anonymous then
             //IFRESERVE(B_8)
             //    PRINT("Sensor GBM_G8: Reserved B_8")
@@ -455,10 +460,10 @@ SEQUENCE(GBM_G8)
     ELSE
         PRINT("Sensor GBM_G8 untriggered")
         // Debounce
-        DELAY(500)
+        DELAY(1000)
         IFNOT(GBM_G8)
-            PRINT("Sensor GBM_G8 still untriggered, freeing B_8")
-            FREE(B_8)
+            //PRINT("Sensor GBM_G8 still untriggered, freeing B_8")
+            //FREE(B_8)
         ENDIF
     ENDIF
 RETURN
@@ -566,16 +571,16 @@ DONE
 SEQUENCE(B_4)
     AT(GBM_G4)
     PRINT("B_4: At G4")
-    //IF(FREE_B_7)
-    //    FREE(B_7)
-    //    UNLATCH(FREE_B_7)
-    //    PRINT("B_4: Freed B_7")
-    //ENDIF
-    //IF(FREE_B_8)
-    //    FREE(B_8)
-    //    UNLATCH(FREE_B_8)
-    //    PRINT("B_4: Freed B_8")
-    //ENDIF
+    IF(FREE_B_7)
+        FREE(B_7)
+        UNLATCH(FREE_B_7)
+        PRINT("B_4: Freed B_7")
+    ENDIF
+    IF(FREE_B_8)
+        FREE(B_8)
+        UNLATCH(FREE_B_8)
+        PRINT("B_4: Freed B_8")
+    ENDIF
     DELAY(500)
     IFRESERVE(B_4)
         PRINT("B_4: Reserved B_4")
@@ -825,13 +830,16 @@ SEQUENCE(B_8)
     DELAY(1000)
     IFRANDOM(50)
         RESET(ABC_G8)
+        IFRESERVE(B_8)
+            PRINT("Reserved B_8 by B_8 security")
+        ENDIF
         DELAYRANDOM( 5000, 30000)
     ENDIF
     RESERVE(B_4)
     PRINT("Reserved B_4 by B_8")
     THROW(W_4)
     SET(ABC_G8)
-    //LATCH(FREE_B_8)
+    LATCH(FREE_B_8)
     /*
     IF(GBM_G8)
         AFTER(GBM_G8)
@@ -861,13 +869,16 @@ SEQUENCE(B_7)
     //PRINT("Freed B_1 by B_7")
     IFRANDOM(50)
         RESET(ABC_G7)
+        IFRESERVE(B_7)
+            PRINT("Reserved B_7 by B_7 security")
+        ENDIF
         DELAYRANDOM( 5000, 30000)
     ENDIF
     RESERVE(B_4)
     PRINT("Reserved B_4 by B_7")
     CLOSE(W_4)
     SET(ABC_G7)
-    //LATCH(FREE_B_7)
+    LATCH(FREE_B_7)
     /*
     IF(GBM_G7)
         AFTER(GBM_G7)
