@@ -208,6 +208,23 @@ SEQUENCE(GBM_G1)
     ENDIF
 RETURN
 
+ONSENSOR(GBM_G11)
+    CALL(GBM_G11)
+DONE
+
+SEQUENCE(GBM_G11)
+    IF(GBM_G11)
+        PRINT("Sensor GBM_G11 triggered")
+    ELSE
+        PRINT("Sensor GBM_G11 untriggered")
+        DELAY(1000)
+        IFNOT(GBM_G11)
+            PRINT("Sensor GBM_G11 still untriggered, freeing B_11")
+            FREE(B_11)
+        ENDIF
+    ENDIF
+RETURN
+
 ONSENSOR(GBM_G2)
     CALL(GBM_G2)
 DONE
@@ -790,6 +807,15 @@ SEQUENCE(B_1_VON_BHF)
         PRINT("Reserved B_1 by B_1_FROM_BHF")
     ENDIF
     DELAY(1000)
+    IFRESERVE(B_11)
+        PRINT("Reserved B_11 by B_1_FROM_BHF")
+    ELSE
+        PRINT("B_1_FROM_BHF: Waiting to reserve B_11")        
+        RESET(ABC_G9)
+        DELAY(5000)
+        RESERVE(B_11)
+        PRINT("Reserved B_11 by B_1_FROM_BHF after wait")
+    ENDIF
     IFRESERVE(B_8)
         PRINT("Reserved B_8 by B_1_FROM_BHF")
         FOLLOW(B_8)
@@ -835,9 +861,18 @@ SEQUENCE(B_8)
         ENDIF
         DELAYRANDOM( 5000, 30000)
     ENDIF
-    RESERVE(B_4)
+    IFRESERVE(B_4)
+        PRINT("Reserved B_4 by B_8")
+    ELSE
+        PRINT("B_8: Waiting to reserve B_4")        
+        RESET(ABC_G8)
+        DELAY(5000)
+        RESERVE(B_4)
+        PRINT("Reserved B_4 by B_8 after wait")
+    ENDIF
     PRINT("Reserved B_4 by B_8")
     THROW(W_4)
+    DELAY(1000)
     SET(ABC_G8)
     LATCH(FREE_B_8)
     /*
@@ -874,9 +909,18 @@ SEQUENCE(B_7)
         ENDIF
         DELAYRANDOM( 5000, 30000)
     ENDIF
-    RESERVE(B_4)
+    IFRESERVE(B_4)
+        PRINT("Reserved B_4 by B_7")
+    ELSE
+        PRINT("B_7: Waiting to reserve B_4")        
+        RESET(ABC_G7)
+        DELAY(5000)
+        RESERVE(B_4)
+        PRINT("Reserved B_4 by B_7 after wait")
+    ENDIF
     PRINT("Reserved B_4 by B_7")
     CLOSE(W_4)
+    DELAY(1000)
     SET(ABC_G7)
     LATCH(FREE_B_7)
     /*
