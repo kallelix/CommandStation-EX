@@ -296,7 +296,7 @@ SEQUENCE(GBM_G4)
     IF(GBM_G4)
         PRINT("Sensor GBM_G4 triggered")
         // Debounce
-        DELAY(500)
+        DELAY(200)
         IF(GBM_G4)
             PRINT("Sensor GBM_G4 still triggered, reserving B_4")
             DEACTIVATEL(SIG_SP_4)
