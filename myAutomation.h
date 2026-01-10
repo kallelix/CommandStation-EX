@@ -102,6 +102,38 @@ SEQUENCE(305)
     THROW(W_12)
 DONE
 
+ROUTE(312, "Set ABC G2")
+    SET(ABC_G2)
+DONE
+
+ROUTE(313, "Reset ABC G2")
+    RESET(ABC_G2)
+DONE
+
+ROUTE(306, "Set ABC G3")
+    SET(ABC_G3)
+DONE
+
+ROUTE(307, "Reset ABC G3")
+    RESET(ABC_G3)
+DONE
+
+ROUTE(308, "Set ABC G13")
+    SET(ABC_G13)
+DONE
+
+ROUTE(309, "Reset ABC G13")
+    RESET(ABC_G13)
+DONE
+
+ROUTE(310, "Set ABC G14")
+    SET(ABC_G14)
+DONE
+
+ROUTE(311, "Reset ABC G14")
+    RESET(ABC_G14)
+DONE
+
 ONTHROW(W_1)
     PRINT("W1 thrown")
     CALL(SIG_SP_2_TEST)
@@ -117,6 +149,7 @@ ONCLOSE(W_1)
     CALL(SIG_SP_2_TEST)
     DEACTIVATEL(SIG_SP_6)
     CALL(SIG_HS_SP_1_TEST)
+    SET(ABC_G2)
 DONE
 
 SEQUENCE(SIG_HS_SP_1_TEST)
@@ -485,6 +518,37 @@ SEQUENCE(GBM_G8)
     ENDIF
 RETURN
 
+ONSENSOR(GBM_G13)
+    CALL(GBM_G13)
+DONE
+SEQUENCE(GBM_G13)
+    IF(GBM_G13)
+        PRINT("Sensor GBM_G13 triggered")
+    ELSE
+        PRINT("Sensor GBM_G13 untriggered")
+        DELAY(1000)
+        IFNOT(GBM_G13)
+            PRINT("Sensor GBM_G13 still untriggered, freeing X")
+        //    FREE(B_11)
+        ENDIF
+    ENDIF
+RETURN
+
+ONSENSOR(GBM_G14)
+    CALL(GBM_G14)
+DONE
+SEQUENCE(GBM_G14)
+    IF(GBM_G14)
+        PRINT("Sensor GBM_G14 triggered")
+    ELSE
+        PRINT("Sensor GBM_G14 untriggered")
+        DELAY(1000)
+        IFNOT(GBM_G14)
+            PRINT("Sensor GBM_G14 still untriggered, freeing X")
+        //    FREE(B_11)
+        ENDIF
+    ENDIF
+RETURN
 // Drive away a loco from the programming track: 989, 990, 991, 992, 993
 ROUTE(989, "Drive away loco from programming track to B2")
     THROW(W_3)
@@ -535,7 +599,7 @@ SEQUENCE(992)
         DELAY(1000)
     ELSE
         PRINT("992: Waiting to reserve B_4")
-        RESERVE(B_4)
+        RESERVE_NOESTOP(B_4)
         PRINT("992: Reserved B_4. Waiting for security delay, because B_4 was just freed")
         DELAY(7000)
     ENDIF
@@ -572,7 +636,7 @@ SEQUENCE(B_4_VON_PROG)
     PRINT("B_4_VON_PROG: Unlatching VON_PROG")
     UNLATCH(VON_PROG)
     DELAYRANDOM(1000, 2500)
-    RESERVE(B_2)
+    RESERVE_NOESTOP(B_2)
     PRINT("B_4_VON_PROG: Reserved B_2")
     THROW(W_3)
     DELAYRANDOM(1000, 2500)
@@ -609,7 +673,7 @@ SEQUENCE(B_4)
         // ONSENSOR(GBM_G4) should did this already
         RESET(ABC_G4)
         DELAY(5000)
-        RESERVE(B_2)
+        RESERVE_NOESTOP(B_2)
         PRINT("B_4: Reserved B_2 after wait")        
     ENDIF
     IFCLOSED(W_3)
@@ -688,7 +752,7 @@ SEQUENCE(B_2)
             ENDIF
         ENDIF
     ENDIF
-    RESERVE(B_1)
+    RESERVE_NOESTOP(B_1)
     // GBM_G10 könnte noch belegt sein, oder?
     PRINT("B_2: Reserved B_1")
     IFTHROWN(W_1)
@@ -711,7 +775,7 @@ DONE
 AUTOMATION(B_2_ROUND, "B_2 round trip")
     PRINT("B_2_ROUND: Do a round trip")
     ROUTE_DISABLED(B_2_ROUND)
-    RESERVE(B_1)
+    RESERVE_NOESTOP(B_1)
     PRINT("B_2_ROUND: Reserved B_1")
     IFTHROWN(W_1)
         CLOSE(W_1)
@@ -737,7 +801,7 @@ DONE
 AUTOMATION(B_2_ZU_B_3, "B_2 to B_3")
     PRINT("B_2_ZU_B_3: Do a trip to B_3")
     ROUTE_DISABLED(B_2_ZU_B_3)
-    RESERVE(B_1)
+    RESERVE_NOESTOP(B_1)
     CALL(SIG_HS_SP_1_TEST)
     PRINT("B_2_ZU_B_3: Reserved B_1")
     CLOSE(W_1)
@@ -754,7 +818,7 @@ AUTOMATION(B_2_ZU_B_3, "B_2 to B_3")
     ENDIF
     DELAY(500)
     STOP
-    RESERVE(B_3)
+    RESERVE_NOESTOP(B_3)
     PRINT("Reserved B_3 by B_2_ZU_B_3")
     THROW(W_1)
     THROW(W_2)
@@ -780,7 +844,7 @@ DONE
 AUTOMATION(B_3_ZU_B_2, "B_3 to B_2")
     PRINT("B_3_ZU_B_2: Do a trip")
     ROUTE_DISABLED(B_3_ZU_B_2)
-    RESERVE(B_1)
+    RESERVE_NOESTOP(B_1)
     PRINT("B_3_ZU_B_2: Reserved B_1")
     THROW(W_2)
     THROW(W_1)
@@ -813,7 +877,7 @@ SEQUENCE(B_1_VON_BHF)
         PRINT("B_1_FROM_BHF: Waiting to reserve B_11")        
         RESET(ABC_G9)
         DELAY(5000)
-        RESERVE(B_11)
+        RESERVE_NOESTOP(B_11)
         PRINT("Reserved B_11 by B_1_FROM_BHF after wait")
     ENDIF
     IFRESERVE(B_8)
@@ -830,7 +894,7 @@ SEQUENCE(B_1_VON_BHF)
                 PRINT("Reserved B_7 by B_1_FROM_BHF")
                 FOLLOW(B_7)
             ELSE
-                RESERVE(B_8)
+                RESERVE_NOESTOP(B_8)
                 PRINT("Reserved B_8 by B_1_FROM_BHF")
                 FOLLOW(B_8)
             ENDIF
@@ -867,7 +931,7 @@ SEQUENCE(B_8)
         PRINT("B_8: Waiting to reserve B_4")        
         RESET(ABC_G8)
         DELAY(5000)
-        RESERVE(B_4)
+        RESERVE_NOESTOP(B_4)
         PRINT("Reserved B_4 by B_8 after wait")
     ENDIF
     PRINT("Reserved B_4 by B_8")
@@ -915,7 +979,7 @@ SEQUENCE(B_7)
         PRINT("B_7: Waiting to reserve B_4")        
         RESET(ABC_G7)
         DELAY(5000)
-        RESERVE(B_4)
+        RESERVE_NOESTOP(B_4)
         PRINT("Reserved B_4 by B_7 after wait")
     ENDIF
     PRINT("Reserved B_4 by B_7")
