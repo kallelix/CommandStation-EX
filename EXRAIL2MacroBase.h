@@ -563,6 +563,9 @@
 #define RESERVE(token_id)
 ///brief Waits for token for block. If not available immediately, current task loco is stopped.
 
+#define RESERVE_NOESTOP(token_id)
+///brief Reserves token for block without estopping the current task loco if token is already taken.
+
 #define RESET(vpin,count...)
 ///brief Sets output pin LOW
 ///see SET
@@ -835,10 +838,6 @@
 ///brief waits for completion of turntable movement
 #endif
 
-#define VIRTUAL_SIGNAL(signal_id)
-///brief Defines a virtual (no hardware) signal, use ONhandlers to simulate hardware
-///see SIGNAL
-
 #define WAIT_WHILE_RED(signal_id)
 ///brief Keeps loco at speed 0 while signal is RED
 
@@ -879,3 +878,12 @@
 ///brief Resumes locos saved speed
 ///param cab loco id
 ///see XRESTORE_SPEED
+
+#define ZTEST(command,testcode...)
+///brief Developer Unit testing.  Do not use. 
+
+#define ZTEST2(command,reply)
+///brief Developer Unit testing.  Do not use.
+
+#define ZTEST3(command,reply,testcode...)
+///brief Developer Unit testing.  Do not use. 

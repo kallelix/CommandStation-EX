@@ -158,7 +158,8 @@
 #undef RANDOM_FOLLOW
 #undef READ_LOCO 
 #undef RED 
-#undef RESERVE 
+#undef RESERVE
+#undef RESERVE_NOESTOP
 #undef RESET 
 #undef RESTORE_SPEED
 #undef RESUME 
@@ -230,6 +231,9 @@
 #undef XFWD
 #undef XSAVE_SPEED
 #undef XRESTORE_SPEED
+#undef ZTEST
+#undef ZTEST2
+#undef ZTEST3
 
 #ifndef RMFT2_UNDEF_ONLY
 #include "EXRAIL2MacroBase.h"
