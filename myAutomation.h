@@ -140,7 +140,7 @@ ROUTE(311, "Reset ABC G14")
     RESET(ABC_G14)
 DONE
 
-AUTOMATION(312, "Stop at B_2")
+AUTOMATION(314, "Stop at B_2")
     // send a loco to this automation to stop at b_2 or b_3
     AT(GBM_G2)
     PRINT("Automation Stop at B_2 triggered")
