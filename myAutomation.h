@@ -904,7 +904,7 @@ DONE
 
 SEQUENCE(B_8)
     PRINT("B_1_VON_BHF: Driving to B_8")
-    CLOSE(W_12)
+    THROW(W_12)
     THROW(W_11)
     SET(ABC_G9)
     //IF(GBM_G1)
@@ -952,7 +952,7 @@ DONE
 
 SEQUENCE(B_7)
     PRINT("B_1_VON_BHF: Driving to B_7")
-    CLOSE(W_12)
+    THROW(W_12)
     CLOSE(W_11)
     CLOSE(W_10)
     SET(ABC_G9)
