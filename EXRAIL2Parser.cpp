@@ -247,9 +247,15 @@ bool RMFT2::parseSlash(Print * stream, byte & paramCount, int16_t p[]) {
       byte flag=flags[id];
       if (flag & ~TASK_FLAG & ~SIGNAL_MASK) { // not interested in TASK_FLAG only. Already shown above
 	      StringFormatter::send(stream,F("\nflags[%d] "),id);
-	      if (flag & SECTION_FLAG) StringFormatter::send(stream,F(" RESERVED"));
 	      if (flag & LATCH_FLAG) StringFormatter::send(stream,F(" LATCHED"));
       }
+    }
+
+    // Section reservations
+    for (int id=0;id<MAX_RESERVE; id++) {
+      int16_t reservation=reservations[id];
+      if (reservation<0) continue;
+	    StringFormatter::send(stream,F("\nreservations[%d] RESERVED by loco %d"),id, reservation);
     }
 
     if (compileFeatures & FEATURE_SIGNAL) {
@@ -298,7 +304,7 @@ bool RMFT2::parseSlash(Print * stream, byte & paramCount, int16_t p[]) {
       
   case "FREEALL"_hk:  // force free all
     if (paramCount!=1) return false;
-    for (int i=0;i<MAX_FLAGS;i++) setFlag(i,0,SECTION_FLAG);
+    for (int i=0;i<MAX_RESERVE;i++) setReservation(i,0);
     return true;
     
   case "START"_hk: // </ START [cab] route >
@@ -342,10 +348,10 @@ bool RMFT2::parseSlash(Print * stream, byte & paramCount, int16_t p[]) {
     return false;
     
   case "RESERVE"_hk:  // force reserve a section
-    return setFlag(p[1],SECTION_FLAG);
+    return setReservation(p[1], 0);
     
   case "FREE"_hk:  // force free a section
-    return setFlag(p[1],0,SECTION_FLAG);
+    return setReservation(p[1], -1);
     
   case "LATCH"_hk:
     return setFlag(p[1], LATCH_FLAG);
