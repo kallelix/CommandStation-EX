@@ -47,7 +47,13 @@ SEQUENCE(303)
     CALL(GBM_G4)
     CALL(GBM_G5)
     CALL(GBM_G6)
+    CALL(GBM_G7)
+    CALL(GBM_G8)
+    CALL(GBM_G1)
+    CALL(GBM_G11)
     CALL(GBM_G12)
+    CALL(GBM_G13)
+    CALL(GBM_G14)
 RETURN
 
 ROUTE(301, "Pause")
@@ -132,6 +138,17 @@ DONE
 
 ROUTE(311, "Reset ABC G14")
     RESET(ABC_G14)
+DONE
+
+AUTOMATION(312, "Stop at B_2")
+    // send a loco to this automation to stop at b_2 or b_3
+    AT(GBM_G2)
+    PRINT("Automation Stop at B_2 triggered")
+    // needed:
+    // MEMORY_STORE(slot, value)
+    // MEMORY_READ(slot)
+    // MEMORY_CLEAR(slot)
+    // CURRENTLOCO
 DONE
 
 ONTHROW(W_1)
@@ -752,7 +769,15 @@ SEQUENCE(B_2)
             ENDIF
         ENDIF
     ENDIF
-    RESERVE_NOESTOP(B_1)
+    IFRESERVE(B_1)
+        PRINT("B_2: Reserved B_1")
+    ELSE
+        PRINT("B_2: Waiting to reserve B_1")        
+        RESET(ABC_G2)
+        DELAY(5000)
+        RESERVE_NOESTOP(B_1)
+        PRINT("B_2: Reserved B_1 after wait")
+    ENDIF
     // GBM_G10 könnte noch belegt sein, oder?
     PRINT("B_2: Reserved B_1")
     IFTHROWN(W_1)
@@ -996,4 +1021,146 @@ SEQUENCE(B_7)
     */
     DELAY(1000)
     FOLLOW(B_4)
+DONE
+
+AUTOMATION(B_3_ROUND, "B_3 round trip")
+    PRINT("B_3_ROUND: Do a round trip")
+    ROUTE_DISABLED(B_3_ROUND)
+    RESERVE_NOESTOP(B_5)
+    PRINT("B_3_ROUND: Reserved B_5")
+    ACTIVATEL(SIG_HS_5)
+    DELAYRANDOM(3000, 5000)
+    FON(0)
+    DELAYRANDOM(3000, 5000)
+    SET(ABC_G3)
+    FWD(70)
+    ROUTE_INACTIVE(B_3_ROUND)
+    FOLLOW(B_5)
+DONE
+
+SEQUENCE(B_5)
+    AT(GBM_G5)
+    PRINT("At G5 from B_3")
+    IFRESERVE(B_5)
+        PRINT("Reserved B_5 by B_5")
+    ENDIF
+    IFRESERVE(B_6)
+        PRINT("Reserved B_6 by B_5")
+    ELSE
+        PRINT("B_5: Waiting to reserve B_6")        
+        RESET(ABC_G5)
+        DELAY(5000)
+        RESERVE_NOESTOP(B_6)
+        DELAYRANDOM(3000,5000)
+        PRINT("Reserved B_6 by B_5 after wait")
+    ENDIF
+    SET(ABC_G5)
+    DELAY(2000)
+    FOLLOW(B_6)
+DONE
+
+SEQUENCE(B_6)
+    AT(GBM_G6)
+    PRINT("At G6 from B_5")
+
+    IFRESERVE(B_6)
+        PRINT("Reserved B_6 by B_6")
+    ENDIF
+    DELAY(1000)
+    IFRESERVE(B_1)
+        PRINT("Reserved B_1 by B_6")
+    ELSE
+        PRINT("B_6: Waiting to reserve B_1")        
+        RESET(ABC_G6)
+        DELAY(5000)
+        RESERVE_NOESTOP(B_1)
+        PRINT("Reserved B_1 by B_6 after wait")
+    ENDIF
+    IFRESERVE(B_11)
+        PRINT("Reserved B_11 by B_6")
+    ELSE
+        PRINT("B_6: Waiting to reserve B_11")        
+        RESET(ABC_G6)
+        DELAY(5000)
+        RESERVE_NOESTOP(B_11)
+        PRINT("Reserved B_11 by B_6 after wait")
+    ENDIF
+    IFCLOSED(W_10)
+        RESET(ABC_G6)
+        DELAY(1000)
+        THROW(W_10)
+    ENDIF
+    IFTHROWN(W_11)
+        RESET(ABC_G6)
+        DELAY(1000)
+        CLOSE(W_11)
+    ENDIF
+    IFCLOSED(W_12)
+        RESET(ABC_G6)
+        DELAY(1000)
+        THROW(W_12)
+    ENDIF
+    DELAY(1000)
+    SET(ABC_G6)
+    FOLLOW(B_1)
+DONE
+
+SEQUENCE(B_1)
+    AT(GBM_G1)
+    PRINT("At G1 from B_6")
+    IFRESERVE(B_1)
+        PRINT("Reserved B_1 by B_1")
+    ENDIF
+    DELAY(1000)
+    IFRESERVE(B_3)
+        PRINT("Reserved B_3 by B_1")
+    ELSE
+        PRINT("B_1: Waiting to reserve B_3")        
+        RESET(ABC_G1)
+        DELAY(5000)
+        RESERVE_NOESTOP(B_3)
+        PRINT("Reserved B_3 by B_1 after wait")
+        DELAYRANDOM(1000, 3000)
+    ENDIF
+    IFCLOSED(W_1)
+        RESET(ABC_G1)
+        DELAY(2000)
+        THROW(W_1)
+    ENDIF
+    IFCLOSED(W_2)
+        RESET(ABC_G1)
+        DELAY(2000)
+        THROW(W_2)
+    ENDIF
+    SET(ABC_G1)
+    DELAY(1000)
+    FOLLOW(B_3)
+DONE
+
+SEQUENCE(B_3)
+    AT(GBM_G3)
+    PRINT("At G3 from B_1")
+    IFRESERVE(B_3)
+        PRINT("Reserved B_3 by B_3")
+    ENDIF
+    IFRANDOM(70)
+        DEACTIVATEL(SIG_HS_5)
+        RESET(ABC_G3)
+        DELAYRANDOM(10000, 30000)
+        IFNOT(GBM_G5)
+            ACTIVATEL(SIG_HS_5)
+        ENDIF
+    ENDIF
+    IFRESERVE(B_5)
+        PRINT("Reserved B_5 by B_3")
+    ELSE
+        PRINT("B_3: Waiting to reserve B_5")        
+        RESET(ABC_G3)
+        DELAY(5000)
+        RESERVE_NOESTOP(B_5)
+        PRINT("Reserved B_5 by B_3 after wait")
+    ENDIF
+    DELAY(1000)
+    SET(ABC_G3)
+    FOLLOW(B_5)
 DONE
