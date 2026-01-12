@@ -1321,13 +1321,20 @@ bool RMFT2::getFlag(VPIN id,byte mask) {
 
 bool RMFT2::setReservation(int16_t id, int16_t loco) {
   if (RESERVEOVERFLOW(id)) return false;
-  reservations[id]= loco;
+  reservations[id] = loco;
   return true;
 }
 
 bool RMFT2::getReservation(int16_t id, int16_t loco) {
   if (RESERVEOVERFLOW(id)) return false; // Outside range limit
-  return reservations[id] >= 0 && reservations[id] != loco;
+  
+  // return true if reserved, false can reserve
+  // section is free -> can reserve:
+  if (reservations[id]<0) return false;
+  // section is reserved by own loco -> can reserve:
+  if (reservations[id]>0 && reservations[id]==loco) return false;
+  // otherwise cannot reserve
+  return true;
 }
 
 void RMFT2::kill(const FSH * reason, int operand) {
