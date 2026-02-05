@@ -50,10 +50,12 @@ SEQUENCE(303)
     CALL(GBM_G7)
     CALL(GBM_G8)
     CALL(GBM_G1)
+    CALL(GBM_G10)
     CALL(GBM_G11)
     CALL(GBM_G12)
     CALL(GBM_G13)
     CALL(GBM_G14)
+    CALL(GBM_G9)
 RETURN
 
 ROUTE(301, "Pause")
@@ -257,6 +259,23 @@ SEQUENCE(GBM_G1)
         IFNOT(GBM_G1)
             PRINT("Sensor GBM_G1 still untriggered")
             //FREE(B_1)
+        ENDIF
+    ENDIF
+RETURN
+
+ONSENSOR(GBM_G9)
+    CALL(GBM_G9)
+DONE
+
+SEQUENCE(GBM_G9)
+    IF(GBM_G9)
+        PRINT("Sensor GBM_G9 triggered")
+    ELSE
+        PRINT("Sensor GBM_G9 untriggered")
+        DELAY(1000)
+        IFNOT(GBM_G9)
+            PRINT("Sensor GBM_G9 still untriggered, freeing B_9")
+            //FREE(B_9)
         ENDIF
     ENDIF
 RETURN
@@ -1309,6 +1328,12 @@ SEQUENCE(B_1)
     ENDIF
     SET(ABC_G1)
     LATCH(FREE_B_1_FROM_B6)
+    IF(WAIT_AT_B_3)
+        PRINT("B_1: Planning to wait at B_3")
+        LATCH(WAIT_AT_B_3)
+        DEACTIVATEL(SIG_HS_5)
+        RESET(ABC_G3)
+    ENDIF
     DELAY(1000)
     FOLLOW(B_3)
 DONE
@@ -1324,12 +1349,14 @@ SEQUENCE(B_3)
         UNLATCH(FREE_B_1_FROM_B6)
         PRINT("B_3: Freed B_1")
     ENDIF
-    IFRANDOM(70)
+    IF(WAIT_AT_B_3)
         DEACTIVATEL(SIG_HS_5)
         RESET(ABC_G3)
         DELAYRANDOM(10000, 30000)
+        UNLATCH(WAIT_AT_B_3)
         IFNOT(GBM_G5)
             ACTIVATEL(SIG_HS_5)
+            DELAYRANDOM(300,1000)
         ENDIF
     ENDIF
     IFRESERVE(B_5)
