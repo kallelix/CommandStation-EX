@@ -39,6 +39,7 @@ AUTOSTART
     DELAY(1000)
     CALL(303) // Initialize signals
     CALL(305) // Init all turnouts to thrown position
+    RESET(PARK_N_STOP)
 DONE
 
 SEQUENCE(303)
@@ -64,10 +65,11 @@ ROUTE(301, "Pause")
 DONE
 
 ROUTE(302, "Resume")
+    RESET(PARK_N_STOP)
     RESUME
 DONE
 
-ROUTE(304, "Stop all tasks")
+ROUTE(304, "Kill all tasks")
     KILLALL
     IFNOT(GBM_G2)
         FREE(B_2)
@@ -114,36 +116,11 @@ SEQUENCE(305)
     THROW(W_12)
 DONE
 
-ROUTE(312, "Set ABC G2")
-    SET(ABC_G2)
-DONE
-
-ROUTE(313, "Reset ABC G2")
-    RESET(ABC_G2)
-DONE
-
-ROUTE(306, "Set ABC G3")
-    SET(ABC_G3)
-DONE
-
-ROUTE(307, "Reset ABC G3")
-    RESET(ABC_G3)
-DONE
-
-ROUTE(308, "Set ABC G13")
-    SET(ABC_G13)
-DONE
-
-ROUTE(309, "Reset ABC G13")
-    RESET(ABC_G13)
-DONE
-
-ROUTE(310, "Set ABC G14")
-    SET(ABC_G14)
-DONE
-
-ROUTE(311, "Reset ABC G14")
-    RESET(ABC_G14)
+ROUTE(306, "Stop and Park")
+    ROUTE_ACTIVE(306)
+    SET(PARK_N_STOP)
+    DELAY(3000)
+    ROUTE_INACTIVE(306)
 DONE
 
 AUTOMATION(314, "Stop at B_2")
@@ -205,6 +182,9 @@ ONTHROW(W_2)
     CALL(SIG_SP_2_TEST)
     IFTHROWN(W_1)
         ACTIVATEL(SIG_SP_6)
+    ENDIF
+    IFNOT(GBM_G3)
+        SET(ABC_G15)
     ENDIF
 DONE
 
@@ -373,6 +353,10 @@ SEQUENCE(GBM_G3)
                 PRINT("Sensor GBM_G3: Break to wait for B_5 to clear")
                 RESET(ABC_G3)
             ENDIF
+            IFTHROWN(W_2)
+                PRINT("GBM_3: GBM_G3 occupied, don't allow entry to bhf3")
+                RESET(ABC_G15)
+            ENDIF
         ENDIF
     ELSE
         PRINT("Sensor GBM_G3 untriggered")
@@ -381,6 +365,9 @@ SEQUENCE(GBM_G3)
         IFNOT(GBM_G3)
             PRINT("Sensor GBM_G3 still untriggered, freeing B_3")
             FREE(B_3)
+            IFTHROWN(W_2)
+                SET(ABC_G15)
+            ENDIF
         ENDIF
     ENDIF
 RETURN
@@ -403,12 +390,12 @@ SEQUENCE(GBM_G4)
             //ENDIF
             IF(GBM_G2)
                 IFTHROWN(W_3)
-                    PRINT("Sensor GBM_G4: Break to wait for B_2 to clear")
+                    PRINT("Sensor GBM_G4: Brake to wait for B_2 to clear")
                     RESET(ABC_G4)
                 ENDIF
             ENDIF
             IF(GBM_G12)
-                PRINT("Sensor GBM_G4: Break to wait for GBM_G12 to clear")
+                PRINT("Sensor GBM_G4: Brake to wait for GBM_G12 to clear")
                 RESET(ABC_G4)
             ENDIF
         ENDIF
@@ -486,6 +473,9 @@ SEQUENCE(GBM_G5)
             PRINT("Sensor GBM_G5 still untriggered, activating SIG_HS_5 and freeing B_5")
             ACTIVATEL(SIG_HS_5)
             FREE(B_5)
+        ENDIF
+        IFRANDOM(20)
+            DEACTIVATEL(L_WH_1)
         ENDIF
     ENDIF
 RETURN
@@ -732,6 +722,11 @@ SEQUENCE(B_4)
     IFRESERVE(B_4)
         PRINT("B_4: Reserved B_4")
     ENDIF
+    IF(GBM_G2)
+        PRINT("B_4: GBM_G2 occupied, waiting...")
+        RESET(ABC_G4)
+        AT(-1 * GBM_G2)
+    ENDIF
     IFRESERVE(B_2)
         PRINT("B_4: Reserved B_2")
     ELSE
@@ -800,6 +795,16 @@ SEQUENCE(B_2)
     //SLOWDOWN_REL(50)
     //DELAYRANDOM(500, 1500)
     //have to be reworked, GBM_G10 ist not working reliable
+    IF(PARK_N_STOP)
+        PRINT("B_2: Park and stop is active, brake, shutdown and leave task...")
+        RESET(ABC_G2)
+        DELAYRANDOM(5000, 7000)
+        STOP
+        FOFF(0)
+        SET(ABC_G2)
+        DELAY(1000)
+        DONE
+    ENDIF
     IF(GBM_G1)
         PRINT("B_2: GBM_G1 occupied, waiting...")
         // todo: move to GBM_G1 ONSENSOR
@@ -853,10 +858,18 @@ SEQUENCE(B_2)
     //ENDIF
     //FREE(B_2)
     //PRINT("Freed B_2 by B_2")
+    IFLOCO(14)
+        IFRANDOM(20)
+            PRINT("B_2: Loco is VT35, doing trip to hill")
+            ROUTE_ACTIVE(B_2_TO_HILL)
+            FOLLOW(B_2_TO_HILL)
+        ENDIF
+    ENDIF    
     FOLLOW(B_1_VON_BHF)
 DONE
 
-AUTOMATION(B_2_ROUND, "B_2 round trip")
+AUTOMATION(B_2_ROUND, "B2 round trip")
+    RESET(PARK_N_STOP)
     PRINT("B_2_ROUND: Do a round trip")
     ROUTE_DISABLED(B_2_ROUND)
     RESERVE_NOESTOP(B_1)
@@ -883,6 +896,7 @@ AUTOMATION(B_2_ROUND, "B_2 round trip")
 DONE
 
 AUTOMATION(B_2_TO_HILL, "B_2 to hill")
+    RESET(PARK_N_STOP)
     PRINT("B_2_TO_HILL: Do a hill trip")
     ROUTE_DISABLED(B_2_TO_HILL)
     RESERVE_NOESTOP(B_14)
@@ -913,6 +927,7 @@ AUTOMATION(B_2_TO_HILL, "B_2 to hill")
 DONE
 
 AUTOMATION(HILL_TO_B_2, "hill to B_2")
+    RESET(PARK_N_STOP)
     PRINT("HILL_TO_B_2: Do a trip from hill to B_2")
     ROUTE_DISABLED(HILL_TO_B_2)
     FON(0)
@@ -987,6 +1002,7 @@ SEQUENCE(B_1_FROM_HILL)
 DONE
 
 AUTOMATION(B_2_ZU_B_3, "B_2 to B_3")
+    RESET(PARK_N_STOP)
     PRINT("B_2_ZU_B_3: Do a trip to B_3")
     ROUTE_DISABLED(B_2_ZU_B_3)
     RESERVE_NOESTOP(B_1)
@@ -1030,6 +1046,7 @@ AUTOMATION(B_2_ZU_B_3, "B_2 to B_3")
 DONE
 
 AUTOMATION(B_3_ZU_B_2, "B_3 to B_2")
+    RESET(PARK_N_STOP)
     PRINT("B_3_ZU_B_2: Do a trip")
     ROUTE_DISABLED(B_3_ZU_B_2)
     RESERVE_NOESTOP(B_1)
@@ -1071,10 +1088,25 @@ SEQUENCE(B_1_VON_BHF)
     SET(FREE_B_1)
     IFRESERVE(B_8)
         PRINT("Reserved B_8 by B_1_FROM_BHF")
+        IFCLOSED(W_12)
+            RESET(ABC_G9)
+        ENDIF
+        IFCLOSED(W_11)
+            RESET(ABC_G9)
+        ENDIF
         FOLLOW(B_8)
     ELSE
         IFRESERVE(B_7)
             PRINT("Reserved B_7 by B_1_FROM_BHF")
+            IFCLOSED(W_12)
+                RESET(ABC_G9)
+            ENDIF
+            IFTHROWN(W_11)
+                RESET(ABC_G9)
+            ENDIF
+            IFTHROWN(W_10)
+                RESET(ABC_G9)
+            ENDIF
             FOLLOW(B_7)
         ELSE
             RESET(ABC_G9)
@@ -1144,7 +1176,7 @@ SEQUENCE(B_8)
         IFRESERVE(B_8)
             PRINT("Reserved B_8 by B_8 security")
         ENDIF
-        DELAYRANDOM( 5000, 30000)
+        DELAYRANDOM( 10000, 60000)
     ENDIF
     IFRESERVE(B_4)
         PRINT("Reserved B_4 by B_8")
@@ -1187,6 +1219,7 @@ SEQUENCE(B_7)
     ENDIF
     //FREE(B_1)
     //PRINT("Freed B_1 by B_7")
+    DELAY(2000)
     IFRANDOM(50)
         RESET(ABC_G7)
         IFRESERVE(B_7)
@@ -1221,6 +1254,8 @@ DONE
 
 AUTOMATION(B_3_ROUND, "B_3 round trip")
     PRINT("B_3_ROUND: Do a round trip")
+    
+    RESET(PARK_N_STOP)
     ROUTE_DISABLED(B_3_ROUND)
     RESERVE_NOESTOP(B_5)
     PRINT("B_3_ROUND: Reserved B_5")
@@ -1258,11 +1293,25 @@ DONE
 SEQUENCE(B_6)
     AT(GBM_G6)
     PRINT("At G6 from B_5")
-
     IFRESERVE(B_6)
         PRINT("Reserved B_6 by B_6")
     ENDIF
     DELAY(1000)
+    IFCLOSED(W_10)
+        RESET(ABC_G6)
+    ENDIF
+    IFTHROWN(W_11)
+        RESET(ABC_G6)
+    ENDIF
+    IFCLOSED(W_12)
+        RESET(ABC_G6)
+    ENDIF
+    IFRANDOM(50)
+        PRINT("B_6: Wait random at G6")
+        RESET(ABC_G6)
+        DELAYRANDOM(20000, 50000)
+        PRINT("B_6: Waited at G6")
+    ENDIF
     IFRESERVE(B_1)
         PRINT("Reserved B_1 by B_6")
     ELSE
@@ -1277,10 +1326,11 @@ SEQUENCE(B_6)
     ELSE
         PRINT("B_6: Waiting to reserve B_11")        
         RESET(ABC_G6)
-        DELAY(5000)
+        DELAYRANDOM(5000,10000)
         RESERVE_NOESTOP(B_11)
         PRINT("Reserved B_11 by B_6 after wait")
     ENDIF
+    DELAY(3000)
     IFCLOSED(W_10)
         RESET(ABC_G6)
         DELAY(1000)
@@ -1330,11 +1380,14 @@ SEQUENCE(B_1)
     ENDIF
     SET(ABC_G1)
     SET(FREE_B_1_FROM_B6)
-    IF(WAIT_AT_B_3)
+    IFRANDOM(50)
         PRINT("B_1: Planning to wait at B_3")
         SET(WAIT_AT_B_3)
         DEACTIVATEL(SIG_HS_5)
         RESET(ABC_G3)
+        IFRANDOM(80)
+            ACTIVATEL(L_WH_1)
+        ENDIF
     ENDIF
     DELAY(1000)
     FOLLOW(B_3)
@@ -1350,6 +1403,16 @@ SEQUENCE(B_3)
         FREE(B_1)
         RESET(FREE_B_1_FROM_B6)
         PRINT("B_3: Freed B_1")
+    ENDIF
+    IF(PARK_N_STOP)
+        PRINT("B_3: Park and stop is active, brake, shutdown and leave task...")
+        RESET(ABC_G3)
+        DELAYRANDOM(5000, 7000)
+        STOP
+        FOFF(0)
+        SET(ABC_G3)
+        DELAY(1000)
+        DONE
     ENDIF
     IF(WAIT_AT_B_3)
         DEACTIVATEL(SIG_HS_5)
