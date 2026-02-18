@@ -783,6 +783,18 @@
 ///brief Changes current tasks loco speed without changing direction
 ///param speed 0..127 (1=ESTOP)
 
+#define SPEEDUP(speedstep)
+///brief Increases current tasks loco speed by given amount
+///param speedstep 0..127
+
+#define SLOWDOWN(speedstep)
+///brief Decreases current tasks loco speed by given amount
+///param speedstep 0..127
+
+#define SPEED_REL(percent)
+///brief Sets current tasks loco speed to percentage of current speed
+///param percent 1..500
+
 #define START(sequence_id)
 ///brief Starts a new task at the given route/animation/sequence
 
