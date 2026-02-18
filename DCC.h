@@ -53,6 +53,7 @@ public:
   static bool setThrottle(uint16_t cab, uint8_t tSpeed, bool tDirection);
   static void estopAll();
   static void estopLock(bool lock);
+  static bool isEstopLocked();
 
   static int8_t getThrottleSpeed(int cab);
   static uint8_t getThrottleSpeedByte(int cab);
@@ -117,7 +118,7 @@ private:
   static byte defaultMomentumA;  // Accelerating
   static byte defaultMomentumD;  // Accelerating
   static void setThrottle2(LocoSlot * slot, uint8_t speedCode);
-  static void setThrottleDCC(uint16_t cab, uint8_t speedCode);
+  static void setThrottleDCC(LocoSlot * slot, uint8_t speedCode);
   static void setFunctionInternal(int cab, byte group, byte fByte, byte eByte);
   static bool issueReminder(LocoSlot  * slot);
   static LocoSlot * nextLocoReminder;
