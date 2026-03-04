@@ -272,6 +272,14 @@
 ///brief Checks sensor state, If false jumps to matching nested ELSE or ENDIF
 ///param vpin  VPIN of sensor. Negative VPIN will invert sensor state.
 
+#define IF_ALL(vpinList...)
+///brief Checks sensor state, If any are false, it jumps to matching nested ELSE or ENDIF
+///param vpinlist  comma separated list of VPINs of sensors. Negative VPIN will invert sensor state.
+
+#define IF_ANY(vpinList...)
+///brief Checks sensor state, If all are false jumps to matching nested ELSE or ENDIF
+///param vpinlist  comma separated list of VPINs of sensors. Negative VPIN will invert sensor state.
+
 #define IFAMBER(signal_id)
 ///brief Checks if signal is in AMBER state.
 ///see IF
@@ -288,8 +296,8 @@
 ///brief Checks if analog vpin sensor >= value
 ///see IF
 
-#define IFLOCO(loco_id)
-///brief Checks if current task loco = loco_id
+#define IFLOCO(loco_id_list...)
+///brief Checks if current task loco is in the list of loco ids. List may be comma separated values
 ///see IF
 
 #define IFLT(vpin,value)
