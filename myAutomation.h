@@ -223,6 +223,7 @@ ONCLOSE(W_3)
     PRINT("W3 closed")
     DEACTIVATEL(SIG_HS_2)
     DEACTIVATEL(SIG_SP_4)
+    RESET(ABC_G4)
     JOIN
     RESET(PROG_TEST)
 DONE
@@ -350,7 +351,7 @@ SEQUENCE(GBM_G3)
             //    PRINT("Sensor GBM_G3: Reserved B_3")
             //ENDIF
             IF(GBM_G5)
-                PRINT("Sensor GBM_G3: Break to wait for B_5 to clear")
+                PRINT("Sensor GBM_G3: Brake to wait for B_5 to clear")
                 RESET(ABC_G3)
             ENDIF
             IFTHROWN(W_2)
@@ -743,6 +744,8 @@ SEQUENCE(B_4)
     ENDIF
     SET(ABC_G4)
     DELAY(2000)
+    SAVE_SPEED
+    SPEED_REL(70)
     FOLLOW(B_2)
     //IF(GBM_G4)
     //    AFTER(GBM_G4)
@@ -821,8 +824,8 @@ SEQUENCE(B_2)
             RESET(ABC_G2)
             DELAYRANDOM(5000, 20000)
         ELSE
-            DEACTIVATEL(SIG_SP_1)
-            IFRANDOM(0)
+            IFRANDOM(50)
+                DEACTIVATEL(SIG_SP_1)
                 RESET(ABC_G2)
                 DELAYRANDOM(10000, 30000)
             ELSE
@@ -852,14 +855,14 @@ SEQUENCE(B_2)
     DELAYRANDOM(3000, 5000)
     SET(ABC_G2)
     DELAY(1000)
-    //RESTORESPEED
+    RESTORE_SPEED
     //IF(GBM_G2)
     //    AFTER(GBM_G2)
     //ENDIF
     //FREE(B_2)
     //PRINT("Freed B_2 by B_2")
     IFLOCO(14)
-        IFRANDOM(20)
+        IFRANDOM(33)
             PRINT("B_2: Loco is VT35, doing trip to hill")
             ROUTE_ACTIVE(B_2_TO_HILL)
             FOLLOW(B_2_TO_HILL)
@@ -884,6 +887,7 @@ AUTOMATION(B_2_ROUND, "B2 round trip")
     DELAYRANDOM(3000, 5000)
     SET(ABC_G2)
     FWD(DEFAULT_SPEED)
+    SAVE_SPEED
     ROUTE_INACTIVE(B_2_ROUND)
     /*
     IF(GBM_G2)
@@ -915,6 +919,7 @@ AUTOMATION(B_2_TO_HILL, "B_2 to hill")
     DELAYRANDOM(3000, 5000)
     SET(ABC_G2)
     FWD(DEFAULT_SPEED)
+    SAVE_SPEED
     ROUTE_INACTIVE(B_2_TO_HILL)
     /*
     IF(GBM_G2)
@@ -1013,6 +1018,7 @@ AUTOMATION(B_2_ZU_B_3, "B_2 to B_3")
     DELAYRANDOM(1000, 2000)
     SET(ABC_G2)
     FWD(DEFAULT_SPEED)
+    SAVE_SPEED
     AT(GBM_G1)
     PRINT("At G1 from Bhf")
     //FREE(B_2)
@@ -1056,6 +1062,7 @@ AUTOMATION(B_3_ZU_B_2, "B_3 to B_2")
     FON(0)
     DELAYRANDOM(500, 2000)
     FWD(DEFAULT_SPEED)
+    SAVE_SPEED
     ROUTE_INACTIVE(B_3_ZU_B_2)
     /*
     IF(GBM_G2)
@@ -1151,8 +1158,8 @@ SEQUENCE(B_1_FROM_BHF_TO_HILL)
     FREE(B_11)
     FREE(B_1)
     PRINT("Freed B_1 by B_1_FROM_BHF_TO_HILL")
-    DELAY(5000)
-    STOP
+    DELAYRANDOM(20000,40000)
+    FOLLOW(HILL_TO_B_2)
 DONE
 
 SEQUENCE(B_8)
@@ -1265,6 +1272,7 @@ AUTOMATION(B_3_ROUND, "B_3 round trip")
     DELAYRANDOM(3000, 5000)
     SET(ABC_G3)
     FWD(DEFAULT_SPEED)
+    SAVE_SPEED
     ROUTE_INACTIVE(B_3_ROUND)
     FOLLOW(B_5)
 DONE
