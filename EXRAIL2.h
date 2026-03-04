@@ -249,6 +249,8 @@ private:
                       OPCODE op2=OPCODE_ENDEXRAIL,OPCODE op3=OPCODE_ENDEXRAIL);
     static uint16_t getOperand(int progCounter,byte n);
     static void killBlinkOnVpin(VPIN pin,uint16_t count=1);
+    static void ifAllFunc(const int16_t * vpinList, int16_t count); 
+    static void ifAnyFunc(const int16_t * vpinList, int16_t count);
     static RMFT2 * loopTask;
     static RMFT2 * pausingTask;
     void delayMe(long millisecs);
@@ -264,6 +266,7 @@ private:
     void resume();
     
    static bool diag;
+   static bool skipIf;
    static const  HIGHFLASH3  byte RouteCode[];
    static const  HIGHFLASH  SIGNAL_DEFINITION SignalDefinitions[];
    static byte flags[MAX_FLAGS];
