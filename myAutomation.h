@@ -506,6 +506,14 @@ SEQUENCE(GBM_G6)
                 PRINT("Sensor GBM_G6: Break to wait for W_10 to be thrown")
                 RESET(ABC_G6)
             ENDIF
+            IFTHROWN(W_11)
+                PRINT("Sensor GBM_G6: Break to wait for W_11 to be thrown")
+                RESET(ABC_G6)
+            ENDIF
+            IFCLOSED(W_12)
+                PRINT("Sensor GBM_G6: Break to wait for W_12 to be closed")
+                RESET(ABC_G6)
+            ENDIF
         ENDIF
     ELSE
         PRINT("Sensor GBM_G6 untriggered")
@@ -595,6 +603,10 @@ DONE
 SEQUENCE(GBM_G14)
     IF(GBM_G14)
         PRINT("Sensor GBM_G14 triggered")
+        // delay because loco is braking too early
+        FWD(DEFAULT_SPEED)
+        DELAY(1000)
+        RESET(ABC_G14)
     ELSE
         PRINT("Sensor GBM_G14 untriggered")
         DELAY(1000)
@@ -745,7 +757,7 @@ SEQUENCE(B_4)
     SET(ABC_G4)
     DELAY(2000)
     SAVE_SPEED
-    SPEED_REL(70)
+    SPEED_REL(80)
     FOLLOW(B_2)
     //IF(GBM_G4)
     //    AFTER(GBM_G4)
@@ -782,9 +794,10 @@ SEQUENCE(B_2)
         FREE(B_1)
         RESET(FREE_B_1_FROM_HILL)
         PRINT("B_2: Freed B_1 from hill")
-        DELAY(3000)
+        DELAY(2500)
         STOP
         FWD(DEFAULT_SPEED)
+        DELAY(1000)
         RESET(ABC_G2)
         DELAYRANDOM(5000, 15000)
     ENDIF
@@ -836,6 +849,15 @@ SEQUENCE(B_2)
             ENDIF
         ENDIF
     ENDIF
+    IFRESERVE(B_11)
+        PRINT("B_2: Reserved B_11")
+    ELSE
+        PRINT("B_2: Waiting to reserve B_11")        
+        RESET(ABC_G2)
+        DELAY(7000)
+        RESERVE_NOESTOP(B_11)
+        PRINT("B_2: Reserved B_11 after wait")
+    ENDIF
     IFRESERVE(B_1)
         PRINT("B_2: Reserved B_1")
     ELSE
@@ -854,7 +876,7 @@ SEQUENCE(B_2)
     CALL(SIG_HS_SP_1_TEST)
     DELAYRANDOM(3000, 5000)
     SET(ABC_G2)
-    DELAY(1000)
+    DELAY(1500)
     RESTORE_SPEED
     //IF(GBM_G2)
     //    AFTER(GBM_G2)
@@ -875,6 +897,8 @@ AUTOMATION(B_2_ROUND, "B2 round trip")
     RESET(PARK_N_STOP)
     PRINT("B_2_ROUND: Do a round trip")
     ROUTE_DISABLED(B_2_ROUND)
+    RESERVE_NOESTOP(B_11)
+    PRINT("B_2_ROUND: Reserved B_11")
     RESERVE_NOESTOP(B_1)
     PRINT("B_2_ROUND: Reserved B_1")
     IFTHROWN(W_1)
@@ -907,6 +931,8 @@ AUTOMATION(B_2_TO_HILL, "B_2 to hill")
     PRINT("B_2_TO_HILL: Reserved B_14")
     RESERVE_NOESTOP(B_13)
     PRINT("B_2_TO_HILL: Reserved B_13")
+    RESERVE_NOESTOP(B_11)
+    PRINT("B_2_TO_HILL: Reserved B_11")
     RESERVE_NOESTOP(B_1)
     PRINT("B_2_TO_HILL: Reserved B_1")
     IFTHROWN(W_1)
@@ -1152,8 +1178,9 @@ SEQUENCE(B_1_FROM_BHF_TO_HILL)
         DELAY(2000)
     ENDIF
     SET(ABC_G9)
-    DELAY(2000)
-    RESET(ABC_G14)
+    //DELAY(2000)
+    // do this better on sensor, because of timing issues
+    //RESET(ABC_G14)
     AFTER(GBM_G13)
     FREE(B_11)
     FREE(B_1)
