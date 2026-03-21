@@ -605,7 +605,6 @@ SEQUENCE(GBM_G14)
         PRINT("Sensor GBM_G14 triggered")
         // delay because loco is braking too early
         FWD(DEFAULT_SPEED)
-        DELAY(1000)
         RESET(ABC_G14)
     ELSE
         PRINT("Sensor GBM_G14 untriggered")
@@ -1210,7 +1209,7 @@ SEQUENCE(B_8)
         IFRESERVE(B_8)
             PRINT("Reserved B_8 by B_8 security")
         ENDIF
-        DELAYRANDOM( 10000, 60000)
+        DELAYRANDOM( 20000, 60000)
     ENDIF
     IFRESERVE(B_4)
         PRINT("Reserved B_4 by B_8")
@@ -1254,7 +1253,7 @@ SEQUENCE(B_7)
     //FREE(B_1)
     //PRINT("Freed B_1 by B_7")
     DELAY(2000)
-    IFRANDOM(50)
+    IFRANDOM(30)
         RESET(ABC_G7)
         IFRESERVE(B_7)
             PRINT("Reserved B_7 by B_7 security")
@@ -1347,15 +1346,6 @@ SEQUENCE(B_6)
         DELAYRANDOM(20000, 50000)
         PRINT("B_6: Waited at G6")
     ENDIF
-    IFRESERVE(B_1)
-        PRINT("Reserved B_1 by B_6")
-    ELSE
-        PRINT("B_6: Waiting to reserve B_1")        
-        RESET(ABC_G6)
-        DELAY(5000)
-        RESERVE_NOESTOP(B_1)
-        PRINT("Reserved B_1 by B_6 after wait")
-    ENDIF
     IFRESERVE(B_11)
         PRINT("Reserved B_11 by B_6")
     ELSE
@@ -1364,6 +1354,15 @@ SEQUENCE(B_6)
         DELAYRANDOM(5000,10000)
         RESERVE_NOESTOP(B_11)
         PRINT("Reserved B_11 by B_6 after wait")
+    ENDIF
+    IFRESERVE(B_1)
+        PRINT("Reserved B_1 by B_6")
+    ELSE
+        PRINT("B_6: Waiting to reserve B_1")        
+        RESET(ABC_G6)
+        DELAY(5000)
+        RESERVE_NOESTOP(B_1)
+        PRINT("Reserved B_1 by B_6 after wait")
     ENDIF
     DELAY(3000)
     IFCLOSED(W_10)
