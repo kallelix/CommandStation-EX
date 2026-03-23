@@ -1209,12 +1209,13 @@ SEQUENCE(B_8)
     //FREE(B_1)
     //PRINT("Freed B_1 by B_8")
     DELAY(1000)
-    IF(GBM_G2)
-        PRINT("B_8: GBM_G2 occupied, waiting...")
-        RESET(ABC_G8)
-        DELAYRANDOM(5000, 30000)
-    ENDIF
     IFRANDOM(50)
+        // additional wait to suppress rush hour at B_2 and a chance for B_7 to over take B_8
+        IF(GBM_G2)
+            PRINT("B_8: GBM_G2 occupied, waiting...")
+            RESET(ABC_G8)
+            DELAYRANDOM(5000, 30000)
+        ENDIF
         RESET(ABC_G8)
         IFRESERVE(B_8)
             PRINT("Reserved B_8 by B_8 security")
