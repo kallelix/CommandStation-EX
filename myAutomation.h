@@ -605,8 +605,7 @@ SEQUENCE(GBM_G14)
     IF(GBM_G14)
         PRINT("Sensor GBM_G14 triggered")
         // delay because loco is braking too early
-        FWD(DEFAULT_SPEED)
-        DELAY(1000)
+        DELAY(1500)
         RESET(ABC_G14)
     ELSE
         PRINT("Sensor GBM_G14 untriggered")
@@ -795,12 +794,12 @@ SEQUENCE(B_2)
         FREE(B_1)
         RESET(FREE_B_1_FROM_HILL)
         PRINT("B_2: Freed B_1 from hill")
-        DELAY(2500)
+        DELAY(2000)
         STOP
         FWD(DEFAULT_SPEED)
         DELAY(1000)
         RESET(ABC_G2)
-        DELAYRANDOM(5000, 15000)
+        DELAYRANDOM(5000, 10000)
     ENDIF
 
     //FREE(B_4)
@@ -868,16 +867,18 @@ SEQUENCE(B_2)
         RESERVE_NOESTOP(B_1)
         PRINT("B_2: Reserved B_1 after wait")
     ENDIF
-    // GBM_G10 könnte noch belegt sein, oder?
-    PRINT("B_2: Reserved B_1")
+    IF(SHUNTING_PROGRESS)
+        AT(-1 * SHUNTING_PROGRESS)
+        DELAY(1000)
+    ENDIF
     IFTHROWN(W_1)
         CLOSE(W_1)
         DELAY(2000)
     ENDIF
     CALL(SIG_HS_SP_1_TEST)
-    DELAYRANDOM(3000, 5000)
+    DELAYRANDOM(4000, 5000)
     SET(ABC_G2)
-    DELAY(1500)
+    DELAY(500)
     RESTORE_SPEED
     //IF(GBM_G2)
     //    AFTER(GBM_G2)
@@ -976,10 +977,7 @@ AUTOMATION(HILL_TO_B_2, "hill to B_2")
     ENDIF
     FON(0)
     DELAYRANDOM(1000, 3000)
-    SET(ABC_G9)
-    REV(DEFAULT_SPEED)
     ROUTE_INACTIVE(HILL_TO_B_2)
-    AT(GBM_G13)
     IFRESERVE(B_11)
         PRINT("HILL_TO_B_2: Reserved B_11")
     ELSE
@@ -989,6 +987,8 @@ AUTOMATION(HILL_TO_B_2, "hill to B_2")
         RESERVE_NOESTOP(B_11)
         PRINT("HILL_TO_B_2: Reserved B_11 after wait")
     ENDIF
+    REV(DEFAULT_SPEED)
+    AT(GBM_G13)
     IFRESERVE(B_1)
         PRINT("HILL_TO_B_2: Reserved B_1")
     ELSE
@@ -1182,6 +1182,8 @@ SEQUENCE(B_1_FROM_BHF_TO_HILL)
         DELAY(2000)
     ENDIF
     SET(ABC_G9)
+    // Default speed because timing of stopping at B_14
+    FWD(DEFAULT_SPEED)
     //DELAY(2000)
     // do this better on sensor, because of timing issues
     //RESET(ABC_G14)
@@ -1194,9 +1196,13 @@ SEQUENCE(B_1_FROM_BHF_TO_HILL)
 DONE
 
 SEQUENCE(B_8)
-    PRINT("B_1_VON_BHF: Driving to B_8")
-    THROW(W_12)
-    THROW(W_11)
+    PRINT("B_8: Driving to B_8")
+    IFCLOSED(W_12)
+        THROW(W_12)
+    ENDIF
+    IFCLOSED(W_11)
+        THROW(W_11)
+    ENDIF
     SET(ABC_G9)
     //IF(GBM_G1)
     //    AFTER(GBM_G1)
@@ -1248,10 +1254,16 @@ SEQUENCE(B_8)
 DONE
 
 SEQUENCE(B_7)
-    PRINT("B_1_VON_BHF: Driving to B_7")
-    THROW(W_12)
-    CLOSE(W_11)
-    CLOSE(W_10)
+    PRINT("B_7: Driving to B_7")
+    IFCLOSED(W_12)
+        THROW(W_12)
+    ENDIF
+    IFTHROWN(W_11)
+        CLOSE(W_11)
+    ENDIF
+    IFTHROWN(W_10)
+        CLOSE(W_10)
+    ENDIF
     SET(ABC_G9)
     //IF(GBM_G1)
     //    AFTER(GBM_G1)
@@ -1296,7 +1308,7 @@ SEQUENCE(B_7)
     FOLLOW(B_4)
 DONE
 
-AUTOMATION(B_3_ROUND, "B_3 round trip")
+AUTOMATION(B_3_ROUND, "B3 round trip")
     PRINT("B_3_ROUND: Do a round trip")
     
     RESET(PARK_N_STOP)
@@ -1312,6 +1324,35 @@ AUTOMATION(B_3_ROUND, "B_3 round trip")
     SAVE_SPEED
     ROUTE_INACTIVE(B_3_ROUND)
     FOLLOW(B_5)
+DONE
+
+ROUTE(SHUNTING, "Start shunting at port")
+    PRINT("SHUNTING: Starting shunting at port")
+    ROUTE_DISABLED(SHUNTING)
+    ROUTE_CAPTION(SHUNTING, "Starting shunting at port...")
+    SET(SHUNTING_PROGRESS)
+    RESET(ABC_G1)
+    RESET(ABC_G2)
+    DELAY(5000)
+    CLOSE(W_2)
+    THROW(W_1)
+    ROUTE_ACTIVE(SHUNTING)
+    ROUTE_CAPTION(SHUNTING, "Shunting at port...")
+DONE
+
+ROUTE(STOP_SHUNTING, "Stop shunting at port")
+    PRINT("STOP_SHUNTING: Stopping shunting at port")
+    ROUTE_DISABLED(STOP_SHUNTING)
+    ROUTE_DISABLED(SHUNTING)
+    ROUTE_CAPTION(SHUNTING, "Stopping shunting at port...")
+    THROW(W_2)
+    THROW(W_1)
+    DELAY(2000)
+    RESET(SHUNTING_PROGRESS)
+    SET(ABC_G1)
+    ROUTE_INACTIVE(SHUNTING)
+    ROUTE_CAPTION(SHUNTING, "Start shunting at port")
+    ROUTE_INACTIVE(STOP_SHUNTING)
 DONE
 
 SEQUENCE(B_5)
@@ -1418,6 +1459,11 @@ SEQUENCE(B_1)
         RESERVE_NOESTOP(B_3)
         PRINT("Reserved B_3 by B_1 after wait")
         DELAYRANDOM(1000, 3000)
+    ENDIF
+    IF(SHUNTING_PROGRESS)
+        RESET(ABC_G1)
+        AT(-1 * SHUNTING_PROGRESS)
+        DELAY(1000)
     ENDIF
     IFCLOSED(W_1)
         RESET(ABC_G1)
