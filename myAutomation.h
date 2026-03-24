@@ -865,6 +865,7 @@ SEQUENCE(B_2)
         RESET(ABC_G2)
         DELAY(7000)
         RESERVE_NOESTOP(B_1)
+        DELAY(3000)
         PRINT("B_2: Reserved B_1 after wait")
     ENDIF
     IF(SHUNTING_PROGRESS)
