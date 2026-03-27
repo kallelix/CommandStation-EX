@@ -66,10 +66,14 @@ void DCCTimer::startRailcomTimer(byte brakePin) {
   // diagnostic digitalWrite(4,HIGH);   
 
   /* The Railcom timer is started in such a way that it 
-     - First triggers 58+29 uS after the previous TIMER1 tick. 
+     - First triggers a calculated time after the previous TIMER1 tick. 
        This provides an accurate offset (in High Accuracy mode)
-       for the start of the Railcom cutout.
-     - Sets the Railcom pin high at first tick and subsequent ticks 
+       for the start of the Railcom cutout. The delayBeforeCutout value 
+       reflects that this call is made at the start of the end-packet bit
+       thus the delay is nominally 58+58+Tcs BUT 
+       in HA mode, the dcc pin is flipped at the NEXT 
+       interrupt so runs 1 tick behind the code. Thus an extra 58uS is needed. 
+     - Timer2 Sets the Railcom pin high at first tick and subsequent ticks 
        until its reset to setting pin 9 low at next tick.
         
      - Cycles at cutoutDuration so the second tick is the 
@@ -80,30 +84,32 @@ void DCCTimer::startRailcomTimer(byte brakePin) {
        (there will be 7 DCC timer1 ticks in which to do this.)
     
     */
-  const int Tcs=(26+32)/2;   // half way spec Desired time from idealised setup call (at previous DCC timer interrupt) to the cutout.  
-  const int Tce=(454+488)/2; // half way spec (460..480uS) Time from start of cutout to end of cutout.
-  const int cutoutDuration = Tce-Tcs; // Desired interval in microseconds
-  const int cycle=(cutoutDuration+1)/2; // 
-   
-  const byte delayBeforeCutout=58+58+Tcs; // Expected time from idealised setup call (at previous DCC timer interrupt) to the cutout. This is the time we need to wait before we can set pin 9 high. We will then set pin 9 low at the next tick which is cutoutDuration later. This value should be reduced to reflect the Timer1 value measuring the time since the previous hardware interrupt.
+  const int Tcs=28;    // NMRA spec is 26..32
+  const int cutoutDuration_uS = 450;    // As chosen by most
+  const uint16_t delayBeforeCutout_uS=58+58+58+Tcs;
+  const uint16_t timer1_ticks_per_uS = 8;
+  const uint16_t timer2_uS_per_tick = 2;
   
   // Set Timer2 to CTC mode with set on compare match
   TCCR2A = (1 << WGM21) | (1 << COM2B0) | (1 << COM2B1);
   // Prescaler of 32
   TCCR2B =  (1 << CS21) | (1 << CS20); 
-  OCR2A = cycle; // Compare match value for cutout duration
+  OCR2A = cutoutDuration_uS/timer2_uS_per_tick; // Compare match value for cutout duration in timer2 ticks (2uSec)
   // Enable Timer2 output on pin 9 (OC2B)
   DDRB |= (1 << DDB1);
 
-  // timeSlip is the expected time from idealised 
-  // setup call (at previous DCC timer interrupt) to the cutout. 
-  // This value should be reduced to reflect the Timer1 value
-  // measuring the time since the previous hardware interrupt
-
-  // tcnt1 = prescaler 64,  tcnt2 prescaler=32
+  // timeSlip is the expired time since the DCC timer interrupt that triggered this call.
+  // This allows us to cope with any delays between the interrupt and this code executing.  
+  
+  
   noInterrupts();
-  uint16_t timeSlip=(TCNT1/64)*32; 
-  TCNT2=cycle-timeSlip/2-delayBeforeCutout/2;
+  // Time already used since DCC interrupt 
+  uint16_t timeSlip_uS=TCNT1/timer1_ticks_per_uS;
+  
+  // Calculate the time left before the cutout is to be triggered
+  uint16_t timeToCutout_uS=cutoutDuration_uS+timeSlip_uS-delayBeforeCutout_uS;
+  // Adjust clock2 to trigger on time
+  TCNT2=timeToCutout_uS/timer2_uS_per_tick;
   interrupts();
 }
 
