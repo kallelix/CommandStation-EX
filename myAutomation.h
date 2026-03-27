@@ -44,6 +44,7 @@ DONE
 
 SEQUENCE(303)
     CALL(SIG_SP_2_TEST)
+    CALL(GBM_G1)
     CALL(GBM_G2)
     CALL(GBM_G3)
     CALL(GBM_G4)
@@ -71,6 +72,9 @@ DONE
 
 ROUTE(304, "Kill all tasks")
     KILLALL
+    IFNOT(GBM_G1)
+        FREE(B_1)
+    ENDIF
     IFNOT(GBM_G2)
         FREE(B_2)
     ENDIF
@@ -132,6 +136,14 @@ AUTOMATION(314, "Stop at B_2")
     // MEMORY_READ(slot)
     // MEMORY_CLEAR(slot)
     // CURRENTLOCO
+DONE
+
+ROUTE(315, "RESET G4")
+    RESET(ABC_G4)
+DONE
+
+ROUTE(316, "SET G4")
+    SET(ABC_G4)
 DONE
 
 ONTHROW(W_1)
@@ -1216,6 +1228,11 @@ SEQUENCE(B_8)
     //FREE(B_1)
     //PRINT("Freed B_1 by B_8")
     DELAY(1000)
+    IF(GBM_G4)
+        PRINT("B_8: GBM_G4 occupied, waiting...")
+        RESET(ABC_G8)
+        AT(-1 * GBM_G4)
+    ENDIF
     IFRANDOM(50)
         // additional wait to suppress rush hour at B_2 and a chance for B_7 to over take B_8
         IF(GBM_G2)
@@ -1277,6 +1294,11 @@ SEQUENCE(B_7)
     //FREE(B_1)
     //PRINT("Freed B_1 by B_7")
     DELAY(2000)
+    IF(GBM_G4)
+        PRINT("B_7: GBM_G4 occupied, waiting...")
+        RESET(ABC_G7)
+        AT(-1 * GBM_G4)
+    ENDIF
     IFRANDOM(30)
         RESET(ABC_G7)
         IFRESERVE(B_7)
