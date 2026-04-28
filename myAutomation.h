@@ -475,7 +475,7 @@ SEQUENCE(GBM_G5)
             //    PRINT("Sensor GBM_G5: Reserved B_5")
             //ENDIF
             IF(GBM_G6)
-                PRINT("Sensor GBM_G5: Break to wait for B_6 to clear")
+                PRINT("Sensor GBM_G5: Brake to wait for B_6 to clear")
                 RESET(ABC_G5)
             ENDIF
         ENDIF
@@ -617,7 +617,7 @@ SEQUENCE(GBM_G14)
     IF(GBM_G14)
         PRINT("Sensor GBM_G14 triggered")
         // delay because loco is braking too early
-        DELAY(1500)
+        DELAY(2000)
         RESET(ABC_G14)
     ELSE
         PRINT("Sensor GBM_G14 untriggered")
@@ -1200,7 +1200,7 @@ SEQUENCE(B_1_FROM_BHF_TO_HILL)
     //DELAY(2000)
     // do this better on sensor, because of timing issues
     //RESET(ABC_G14)
-    AFTER(GBM_G13)
+    AT(GBM_G13)
     FREE(B_11)
     FREE(B_1)
     PRINT("Freed B_1 by B_1_FROM_BHF_TO_HILL")
@@ -1489,14 +1489,21 @@ SEQUENCE(B_1)
         DELAY(1000)
     ENDIF
     IFCLOSED(W_1)
-        RESET(ABC_G1)
-        DELAY(2000)
         THROW(W_1)
     ENDIF
     IFCLOSED(W_2)
-        RESET(ABC_G1)
-        DELAY(2000)
         THROW(W_2)
+    ENDIF
+    DELAY(2000)
+    IFCLOSED(W_1)
+        RESET(ABC_G1)
+        THROW(W_1)
+        DELAY(2000)
+    ENDIF
+    IFCLOSED(W_2)
+        RESET(ABC_G1)
+        THROW(W_2)
+        DELAY(2000)
     ENDIF
     SET(ABC_G1)
     SET(FREE_B_1_FROM_B6)
