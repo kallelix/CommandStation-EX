@@ -31,7 +31,16 @@ ALIAS(SIG_HS_6, 6)
 ALIAS(SIG_VS_5, 15) //ALIAS(SIG_VS_5, 4)
 ALIAS(SIG_HS_2, 7)
 ALIAS(SIG_HS_2_GELB, 8)
-ALIAS(L_WH_1, 9) // Licht Warehouse 1
+ALIAS(L_WH_1, 9) // Licht Lager 1
+ALIAS(L_BHF_EG, 16) // Licht Bahnhofshalle EG
+ALIAS(L_BHF_OG1, 17) // Licht Bahnhof OG 1
+ALIAS(L_BHF_WH, 18) // Licht Bahnhof Lager
+ALIAS(L_BHF_DG, 19) // Licht Bahnhof DG
+ALIAS(L_BHF_OG2, 20) // Licht Bahnhof OG 2
+ALIAS(L_CROSS, 21) // Bahnübergang
+ALIAS(L_STW_EG, 22) // Licht Stellwerk EG
+ALIAS(L_STW_TR, 23) // Licht Stellwerk Treppe
+ALIAS(L_STW_OG, 24) // Licht Stellwerk OG
 
 ALIAS(ABC_G3, 186)
 ALIAS(ABC_G2, 188)
