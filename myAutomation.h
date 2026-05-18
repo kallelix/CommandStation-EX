@@ -94,10 +94,6 @@ ROUTE(304, "Kill all tasks")
     IFNOT(GBM_G4)
         FREE(B_4)
     ENDIF
-    IFNOT(GBM_G1)
-        FREE(B_1)
-        DEACTIVATEL(L_CROSS)
-    ENDIF
     IFNOT(GBM_G3)
         FREE(B_3)
     ENDIF
@@ -905,8 +901,8 @@ SEQUENCE(B_2)
         DELAY(2000)
     ENDIF
     CALL(SIG_HS_SP_1_TEST)
-    DELAYRANDOM(4000, 5000)
     ACTIVATEL(L_CROSS)
+    DELAYRANDOM(4000, 5000)
     SET(ABC_G2)
     DELAY(500)
     RESTORE_SPEED
