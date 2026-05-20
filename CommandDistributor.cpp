@@ -192,7 +192,7 @@ void CommandDistributor::broadcastTurntable(int16_t id, uint8_t position, bool m
 
 void CommandDistributor::broadcastReservation(int16_t id, int16_t loco) {
   // EX-RAIL named-section reservation broadcast. loco = -1 means freed.
-  broadcastReply(COMMAND_TYPE, F("<jR %d %d>\n"), id, loco);
+  broadcastReply(COMMAND_TYPE, F("<jS %d %d>\n"), id, loco);
 }
 
 void  CommandDistributor::broadcastClockTime(int16_t time, int8_t rate) {
