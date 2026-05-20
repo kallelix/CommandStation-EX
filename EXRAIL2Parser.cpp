@@ -181,7 +181,19 @@ void RMFT2::ComandFilter(Print * stream, byte & opcode, byte & paramCount, int16
               return;
             }
             break;
-        
+
+          case "R"_hk: // <JR> returns all currently held section reservations
+            if (paramCount==1) {
+              for (int id=0; id<MAX_RESERVE; id++) {
+                int16_t reservation=reservations[id];
+                if (reservation<0) continue;
+                StringFormatter::send(stream, F("<jR %d %d>\n"), id, reservation);
+              }
+              opcode=0;
+              return;
+            }
+            break;
+
 
   case 'K': // <K blockid loco>  Block enter
   case 'k': // <k blockid loco>  Block exit

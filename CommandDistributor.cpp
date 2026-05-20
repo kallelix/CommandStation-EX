@@ -190,6 +190,11 @@ void CommandDistributor::broadcastTurntable(int16_t id, uint8_t position, bool m
   broadcastReply(COMMAND_TYPE, F("<I %d %d %d>\n"), id, position, moving);
 }
 
+void CommandDistributor::broadcastReservation(int16_t id, int16_t loco) {
+  // EX-RAIL named-section reservation broadcast. loco = -1 means freed.
+  broadcastReply(COMMAND_TYPE, F("<jR %d %d>\n"), id, loco);
+}
+
 void  CommandDistributor::broadcastClockTime(int16_t time, int8_t rate) {
   // The JMRI clock command is of the form : PFT65871<;>4
   // The CS broadcast is of the form "<jC mmmm nn" where mmmm is time minutes and dd speed
