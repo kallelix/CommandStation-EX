@@ -160,7 +160,6 @@ enum SignalType {
   
  
   // Flag bits for status of hardware and TPL
-  static const byte SECTION_FLAG = 0x80;
   static const byte LATCH_FLAG   = 0x40;
   static const byte TASK_FLAG    = 0x20;
   static const byte SPARE_FLAG   = 0x10;
@@ -173,6 +172,9 @@ enum SignalType {
  
    static const short MAX_FLAGS=256;
   #define FLAGOVERFLOW(x) x>=MAX_FLAGS
+
+   static const short MAX_RESERVE=128;
+  #define RESERVEOVERFLOW(x) x>=MAX_RESERVE
 
 class LookList {
   public: 
@@ -235,7 +237,9 @@ private:
     static bool streamStatus(Print * stream);
     static void streamFlags(Print* stream);
     static bool setFlag(VPIN id,byte onMask, byte OffMask=0);
-    static bool getFlag(VPIN id,byte mask); 
+    static bool getFlag(VPIN id,byte mask);
+    static bool setReservation(int16_t id, int16_t loco);
+    static bool getReservation(int16_t id, int16_t loco);
     static int16_t progtrackLocoId;
     static void doSignal(int16_t id,char rag); 
     static void setTurnoutHiddenState(Turnout * t);
@@ -267,6 +271,7 @@ private:
    static const  HIGHFLASH3  byte RouteCode[];
    static const  HIGHFLASH  SIGNAL_DEFINITION SignalDefinitions[];
    static byte flags[MAX_FLAGS];
+   static int16_t reservations[MAX_RESERVE];
    static Print * LCCSerial;
    static LookList * routeLookup;
    static LookList * signalLookup;

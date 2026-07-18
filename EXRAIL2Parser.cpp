@@ -169,9 +169,15 @@ bool RMFT2::streamStatus(Print * stream) {
       byte flag=flags[id];
       if (flag & ~TASK_FLAG & ~SIGNAL_MASK) { // not interested in TASK_FLAG only. Already shown above
 	      StringFormatter::send(stream,F("\nflags[%d] "),id);
-	      if (flag & SECTION_FLAG) StringFormatter::send(stream,F(" RESERVED"));
 	      if (flag & LATCH_FLAG) StringFormatter::send(stream,F(" LATCHED"));
       }
+    }
+
+    // Section reservations
+    for (int id=0;id<MAX_RESERVE; id++) {
+      int16_t reservation=reservations[id];
+      if (reservation<0) continue;
+	    StringFormatter::send(stream,F("\nreservations[%d] RESERVED by loco %d"),id, reservation);
     }
 
     if (compileFeatures & FEATURE_SIGNAL) {
@@ -190,4 +196,104 @@ bool RMFT2::streamStatus(Print * stream) {
     StringFormatter::send(stream,F(" *>\n"));
     return true;
   }
+  switch (p[0]) {
+  case "PAUSE"_hk: // </ PAUSE>
+    if (paramCount!=1) return false;
+    { // pause all tasks 
+      RMFT2 * task=loopTask;
+      while(task) {
+	      task->pause();
+	      task=task->next;
+	      if (task==loopTask) break;
+      }
+    }
+    DCC::estopAll();  // pause all locos on the track
+    pausingTask=(RMFT2 *)1; // Impossible task address
+    return true;
+    
+  case "RESUME"_hk: // </ RESUME>
+    if (paramCount!=1) return false;
+    pausingTask=NULL;
+    { // resume all tasks
+      RMFT2 * task=loopTask;
+      while(task) {
+	      task->resume();
+	      task=task->next;
+	      if (task==loopTask) break;
+      }
+    }
+    return true;
+      
+  case "FREEALL"_hk:  // force free all
+    if (paramCount!=1) return false;
+    for (int i=0;i<MAX_RESERVE;i++) setReservation(i,0);
+    return true;
+    
+  case "START"_hk: // </ START [cab] route >
+    if (paramCount<2 || paramCount>3) return false;
+    {
+      int route=(paramCount==2) ? p[1] : p[2];
+      uint16_t cab=(paramCount==2)? 0 : p[1];
+      int pc=routeLookup->find(route);
+      if (pc<0) return false;
+      new RMFT2(pc,cab);
+    }
+    return true;
+    
+  default:
+    break;
+  }
+
+  // check KILL ALL here, otherwise the next validation confuses ALL with a flag  
+  if (p[0]=="KILL"_hk && p[1]=="ALL"_hk) {
+    while (loopTask) loopTask->kill(F("KILL ALL")); // destructor changes loopTask
+    return true;   
+  }
+
+  // all other / commands take 1 parameter
+  if (paramCount!=2 ) return false;
   
+  switch (p[0]) {
+  case "KILL"_hk: // Kill taskid|ALL
+    {
+    if ( p[1]<0  || p[1]>=MAX_FLAGS) return false;
+    RMFT2 * task=loopTask;
+      while(task) {
+	      if (task->taskId==p[1]) {
+	        task->kill(F("KILL"));
+	        return  true;
+	      }
+	      task=task->next;
+	      if (task==loopTask) break;
+      }
+    }
+    return false;
+    
+  case "RESERVE"_hk:  // force reserve a section
+    return setReservation(p[1], 0);
+    
+  case "FREE"_hk:  // force free a section
+    return setReservation(p[1], -1);
+    
+  case "LATCH"_hk:
+    return setFlag(p[1], LATCH_FLAG);
+    
+  case "UNLATCH"_hk:
+    return setFlag(p[1], 0, LATCH_FLAG);
+ 
+  case "RED"_hk:
+    doSignal(p[1],SIGNAL_RED);
+    return true;
+ 
+  case "AMBER"_hk:
+    doSignal(p[1],SIGNAL_AMBER);
+    return true;
+ 
+  case "GREEN"_hk:
+    doSignal(p[1],SIGNAL_GREEN);
+    return true;
+    
+  default:
+    return false;
+  }
+}

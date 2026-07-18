@@ -74,6 +74,8 @@ RMFT2 * RMFT2::pausingTask=NULL; // Task causing a PAUSE.
  // when pausingTask is set, that is the ONLY task that gets any service,
  // and all others will have their locos stopped, then resumed after the pausing task resumes.
 byte RMFT2::flags[MAX_FLAGS];
+int16_t RMFT2::reservations[MAX_RESERVE]; // loco ids for reservations
+
 Print * RMFT2::LCCSerial=0;
 LookList *  RMFT2::routeLookup=NULL;
 LookList *  RMFT2::signalLookup=NULL;
@@ -192,6 +194,7 @@ LookList* RMFT2::LookListLoader(OPCODE op1, OPCODE op2, OPCODE op3) {
   bool saved_diag=diag;
   diag=true;
   for (int f=0;f<MAX_FLAGS;f++) flags[f]=0;
+  for (int id=0;id<MAX_RESERVE; id++) reservations[id] = -1;
   
   // create lookups
   routeLookup=LookListLoader(OPCODE_ROUTE, OPCODE_AUTOMATION);
@@ -702,28 +705,28 @@ void RMFT2::loop2() {
     break;
     
   case OPCODE_RESERVE:
-    if (getFlag(operand,SECTION_FLAG)) {
+    if (getReservation(operand, loco)) {
       if (loco) DCC::setThrottle(loco,1,DCC::getThrottleDirection(loco));
       delayMe(500);
       return;
     }
-    setFlag(operand,SECTION_FLAG);
+    setReservation(operand, loco);
     break;
 
   case OPCODE_RESERVE_NOESTOP:
-    if (getFlag(operand,SECTION_FLAG)) {
+    if (getReservation(operand, loco)) {
       delayMe(500);
       return;
     }
-    setFlag(operand,SECTION_FLAG);
+    setReservation(operand, loco);
     break;
     
   case OPCODE_FREE:
-    setFlag(operand,0,SECTION_FLAG);
+    setReservation(operand, -1);
     break;
   
   case OPCODE_FREEALL:
-    for (int i=0;i<MAX_FLAGS;i++) setFlag(i,0,SECTION_FLAG);
+    for (int i=0;i<MAX_FLAGS;i++) setReservation(i, -1);
     break;
   
   case OPCODE_AT:
@@ -903,7 +906,7 @@ void RMFT2::loop2() {
     break;
     
   case OPCODE_IFRESERVE: // do block if we successfully RERSERVE
-    if (!getFlag(operand,SECTION_FLAG)) setFlag(operand,SECTION_FLAG);
+    if (!getReservation(operand, loco)) setReservation(operand, loco);
     else skipIf=true;
     break;
     
@@ -1375,6 +1378,24 @@ bool RMFT2::setFlag(VPIN id,byte onMask, byte offMask) {
 bool RMFT2::getFlag(VPIN id,byte mask) {
   if (FLAGOVERFLOW(id)) return 0; // Outside range limit
   return flags[id]&mask;
+}
+
+bool RMFT2::setReservation(int16_t id, int16_t loco) {
+  if (RESERVEOVERFLOW(id)) return false;
+  reservations[id] = loco;
+  return true;
+}
+
+bool RMFT2::getReservation(int16_t id, int16_t loco) {
+  if (RESERVEOVERFLOW(id)) return false; // Outside range limit
+  
+  // return true if reserved, false can reserve
+  // section is free -> can reserve:
+  if (reservations[id]<0) return false;
+  // section is reserved by own loco -> can reserve:
+  if (reservations[id]>0 && reservations[id]==loco) return false;
+  // otherwise cannot reserve
+  return true;
 }
 
 void RMFT2::kill(const FSH * reason, int operand) {
