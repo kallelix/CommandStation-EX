@@ -29,6 +29,7 @@ except that on the relevant change an EXRAIL thread is started.
 
 #include "EXRAILSensor.h"
 #include "EXRAIL2.h"
+#include "CommandDistributor.h"
 
 void EXRAILSensor::checkAll() {
   if (firstSensor == NULL) return;  // No sensors to be scanned
@@ -76,6 +77,10 @@ bool EXRAILSensor::check() {
     // change validated, act on it.
     active = inputState;
     latchDelay = minReadCount;  // Reset debounce counter
+    // Broadcast the change to clients as a standard sensor message (<Q>/<q>),
+    // so sensors reach throttles/dashboards. Without this an
+    // EXRAIL ONSENSOR only runs its handler and never tells anyone else.
+    CommandDistributor::broadcastSensor(pin, active);
     if (onChange || active) {
       new RMFT2(progCounter);
       return true;  // Don't check any more sensors on this entry
