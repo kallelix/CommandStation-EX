@@ -34,55 +34,30 @@
 // - Implement RMFT specific commands/diagnostics
 // - Reject/modify JMRI commands that would interfere with RMFT processing
 
-void RMFT2::ComandFilter(Print * stream, byte & opcode, byte & paramCount, int16_t p[]) {
+bool RMFT2::streamLCC(Print * stream) {
   (void)stream; // avoid compiler warning if we don't access this parameter
-  
-  switch(opcode) {
-    
-  case 'D':
-    if (p[0]=="EXRAIL"_hk) { // <D EXRAIL ON/OFF>
-      diag = paramCount==2 && (p[1]=="ON"_hk || p[1]==1);
-      opcode=0;
-    }
-    break;
-	
-  case '/':  // New EXRAIL command
-    if (parseSlash(stream,paramCount,p)) opcode=0;
-    break;
-  
-  case 'A': //  <A address aspect>
-    if (paramCount!=2) break; 
-    // Ask exrail if this is just changing the aspect on a 
-    // predefined DCCX_SIGNAL. Because this will handle all 
-    // the IFRED and ONRED type issues at the same time.  
-    if (signalAspectEvent(p[0],p[1])) opcode=0; // all done 
-    break;
-
-  case 'L':
     // This entire code block is compiled out if LLC macros not used 
-    if (!(compileFeatures & FEATURE_LCC)) return;
+    if (!(compileFeatures & FEATURE_LCC)) return false;
     static int lccProgCounter=0;
     static int lccEventIndex=0;
       
-    if (paramCount==0) {  //<L>  LCC adapter introducing self
-      LCCSerial=stream;   // now we know where to send events we raise
-      opcode=0;  // flag command as intercepted
-
+    LCCSerial=stream;   // now we know where to send events we raise
+    
       // loop through all possible sent/waited events 
-      for (int progCounter=lccProgCounter;; SKIPOP) {
+    for (int progCounter=lccProgCounter;; SKIPOP) {
         byte exrailOpcode=GET_OPCODE;
         switch (exrailOpcode) {
           case OPCODE_ENDEXRAIL:
                stream->print(F("<LR>\n")); // ready to roll
                lccProgCounter=0; // allow a second pass
                lccEventIndex=0;
-               return;
+               return true;
 
           case OPCODE_LCC:  
                StringFormatter::send(stream,F("<LS x%h>\n"),getOperand(progCounter,0));
                SKIPOP;
                lccProgCounter=progCounter; 
-               return;
+               return true;
 
           case OPCODE_LCCX:  // long form LCC
                StringFormatter::send(stream,F("<LS x%h%h%h%h>\n"),
@@ -93,7 +68,7 @@ void RMFT2::ComandFilter(Print * stream, byte & opcode, byte & paramCount, int16
                  );
                SKIPOP;SKIPOP;SKIPOP;SKIPOP;          
                lccProgCounter=progCounter; 
-               return;
+               return true;
 
           case OPCODE_ACON:  // CBUS ACON 
           case OPCODE_ACOF:  // CBUS ACOF 
@@ -102,7 +77,7 @@ void RMFT2::ComandFilter(Print * stream, byte & opcode, byte & paramCount, int16
                   getOperand(progCounter,0),getOperand(progCounter,1)); 
                SKIPOP;SKIPOP;
                lccProgCounter=progCounter; 
-               return;
+               return true;
       
       // we stream the hex events we wish to listen to
       // and at the same time build the event index looku.
@@ -120,7 +95,7 @@ void RMFT2::ComandFilter(Print * stream, byte & opcode, byte & paramCount, int16
            onLCCLookup[lccEventIndex]=progCounter; 
            lccEventIndex++;        
            lccProgCounter=progCounter; 
-           return;
+           return true;
 
         case OPCODE_ONACON:
         case OPCODE_ONACOF:
@@ -134,71 +109,18 @@ void RMFT2::ComandFilter(Print * stream, byte & opcode, byte & paramCount, int16
            onLCCLookup[lccEventIndex]=progCounter; 
            lccEventIndex++;        
            lccProgCounter=progCounter; 
-           return;
+           return true;
            
          default:
            break;
         }  
       }
+      return false; // nothing found
     }
-    if (paramCount==1) {  // <L eventid> LCC event arrived from adapter
-        int16_t eventid=p[0];
-        bool reject = eventid<0 || eventid>=countLCCLookup;
-        if (!reject) {
-          startNonRecursiveTask(F("LCC"),eventid,onLCCLookup[eventid]);
-          opcode=0;
-        }
-    }
-    break; 
-    
-    case 'J':  // throttle info commands
-        if (paramCount<1) return; 
-        switch(p[0]) {
-          case "A"_hk: // <JA> returns automations/routes
-            if (paramCount==1) {// <JA>
-              StringFormatter::send(stream, F("<jA"));
-              routeLookup->stream(stream);
-              StringFormatter::send(stream, F(">\n"));
-              opcode=0;
-              return; 
-            }
-            if (paramCount==2) {  // <JA id>
-              int16_t id=p[1];
-              StringFormatter::send(stream,F("<jA %d %c \"%S\">\n"), 
-                id, getRouteType(id), getRouteDescription(id));
-              
-              if (compileFeatures & FEATURE_ROUTESTATE) {
-                // Send any non-default button states or captions
-                int16_t statePos=routeLookup->findPosition(id);
-                if (statePos>=0) {
-                 if (routeStateArray[statePos]) 
-                 StringFormatter::send(stream,F("<jB %d %d>\n"), id, routeStateArray[statePos]);
-                  if (routeCaptionArray[statePos]) 
-                  StringFormatter::send(stream,F("<jB %d \"%S\">\n"), id,routeCaptionArray[statePos]);
-                }
-              }
-              opcode=0;
-              return;
-            }
-            break;
-        
 
-  case 'K': // <K blockid loco>  Block enter
-  case 'k': // <k blockid loco>  Block exit
-        if (paramCount!=2) break;
-        blockEvent(p[0],p[1],opcode=='K');
-        opcode=0;
-        break; 
-  
-  default:  // other commands pass through
-    break;
-  }
-}
-}
 
-bool RMFT2::parseSlash(Print * stream, byte & paramCount, int16_t p[]) {
+bool RMFT2::streamStatus(Print * stream) {
 
-  if (paramCount==0) { // STATUS
     StringFormatter::send(stream, F("<* EXRAIL STATUS"));
     RMFT2 * task=loopTask;
     while(task) {
