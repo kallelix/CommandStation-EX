@@ -1382,7 +1382,9 @@ bool RMFT2::getFlag(VPIN id,byte mask) {
 
 bool RMFT2::setReservation(int16_t id, int16_t loco) {
   if (RESERVEOVERFLOW(id)) return false;
+  if (reservations[id] == loco) return true;
   reservations[id] = loco;
+  CommandDistributor::broadcastReservation(id, loco);
   return true;
 }
 

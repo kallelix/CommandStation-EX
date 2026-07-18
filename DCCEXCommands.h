@@ -233,8 +233,14 @@ ZZ(J,R,id) // Get roster for loco
         if (!functionNames) functionNames=RMFT2::getRosterFunctions(0);
         if (!functionNames) functionNames=F("");
         REPLY("<jR %d \"%S\" \"%S\">\n",id, rosterName, functionNames)
+ZZ(J,S) // List held section reservations
+        for (int id=0; id<MAX_RESERVE; id++) {
+          auto reservation=RMFT2::reservations[id];
+          if (reservation<0) continue;
+          REPLY("<jS %d %d>\n", id, reservation)
+        }
 #endif
-ZZ(J,T) // Get turnout list 
+ZZ(J,T) // Get turnout list
         REPLY("<jT")
         for ( auto t=Turnout::first(); t; t=t->next()) if (!t->isHidden())  REPLY(" %d",t->getId()) 
         REPLY(">\n");
@@ -797,11 +803,11 @@ ZZ(/,KILL,taskid) // Kill specific EXRAIL tasks
       }
     CHECK(found, task not found)
 ZZ(/,RESERVE,section) // Flag section as reserved
-    CHECK(RMFT2::setFlag(section,SECTION_FLAG),invalid section)
+    CHECK(RMFT2::setReservation(section,0),invalid section)
 ZZ(/,FREE,section) // Free reserve on section
-    CHECK(RMFT2::setFlag(section,0,SECTION_FLAG),invalid section)
+    CHECK(RMFT2::setReservation(section,-1),invalid section)
 ZZ(/,FREEALL) // Free all reserves
-    for (int i=0;i<MAX_FLAGS;i++) RMFT2::setFlag(i,0,SECTION_FLAG);
+    for (int i=0;i<MAX_RESERVE;i++) RMFT2::setReservation(i,-1);
 ZZ(/,LATCH,latch) // Set pin latch
   CHECK(RMFT2::setFlag(latch,LATCH_FLAG),invalid latch)
 ZZ(/,UNLATCH,latch) // Remove pin latch
