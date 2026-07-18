@@ -191,7 +191,6 @@ LookList* RMFT2::LookListLoader(OPCODE op1, OPCODE op2, OPCODE op3) {
     
   bool saved_diag=diag;
   diag=true;
-  DCCEXParser::setRMFTFilter(RMFT2::ComandFilter);
   for (int f=0;f<MAX_FLAGS;f++) flags[f]=0;
   
   // create lookups
@@ -1582,11 +1581,15 @@ void RMFT2::railsyncEvent(bool on) {
   if (Diag::CMD)
    DIAG(F("railsyncEvent : %d"), on);
   if (on) {
-    if (onRailSyncOnLookup)
+    if (onRailSyncOnLookup && onRailSyncOnLookup->size() > 0)
       onRailSyncOnLookup->handleEvent(F("RAILSYNCON"), 0);
   } else {
-    if (onRailSyncOffLookup)
+    if (onRailSyncOffLookup && onRailSyncOffLookup->size() > 0)
       onRailSyncOffLookup->handleEvent(F("RAILSYNCOFF"), 0);
+    else {
+      TrackManager::setTrackPower(TRACK_MODE_BOOST, POWERMODE::OFF);
+      DIAG(F("Railsync signal went off and no ONRAILSYNCOFF handler was defined. All booster tracks switched off"));
+    }
   }
 }
 #endif
@@ -1714,7 +1717,7 @@ void RMFT2::thrungeString(uint32_t strfar, thrunger mode, byte id) {
          break;
     // TODO  more serials for SAMx case thrunge_serial4: stream=&Serial4; break;
     case thrunge_parse: 
-      DCCEXParser::parseOne(&USB_SERIAL,(byte*)buffer->getString(),NULL);
+      DCCEXParser::parseOne(&USB_SERIAL,(byte*)buffer->getString());
       break;
     case thrunge_broadcast:
       CommandDistributor::broadcastRaw(CommandDistributor::COMMAND_TYPE,buffer->getString());
