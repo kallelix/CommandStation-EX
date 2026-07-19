@@ -42,6 +42,8 @@ TURNOUTL(L_CROSS,   L_CROSS,   "Licht: Bahnübergang")
 TURNOUTL(L_STW_EG,  L_STW_EG,  "Licht: Stellwerk EG")
 TURNOUTL(L_STW_TR,  L_STW_TR,  "Licht: Stellwerk Treppe")
 TURNOUTL(L_STW_OG,  L_STW_OG,  "Licht: Stellwerk OG")
+TURNOUTL(L_STREET, L_STREET,  "Licht: Straße")
+TURNOUTL(L_BHF, L_BHF,  "Licht: Bahnhof")
 
 #include "myAlias.h"
 
@@ -498,9 +500,6 @@ SEQUENCE(GBM_G5)
             PRINT("Sensor GBM_G5 still untriggered, activating SIG_HS_5 and freeing B_5")
             ACTIVATEL(SIG_HS_5)
             FREE(B_5)
-        ENDIF
-        IFRANDOM(20)
-            DEACTIVATEL(L_WH_1)
         ENDIF
     ENDIF
 RETURN
@@ -1535,9 +1534,6 @@ SEQUENCE(B_1)
         SET(WAIT_AT_B_3)
         DEACTIVATEL(SIG_HS_5)
         RESET(ABC_G3)
-        IFRANDOM(80)
-            ACTIVATEL(L_WH_1)
-        ENDIF
     ENDIF
     DELAY(1000)
     FOLLOW(B_3)
@@ -1588,4 +1584,212 @@ SEQUENCE(B_3)
     DELAY(1000)
     SET(ABC_G3)
     FOLLOW(B_5)
+DONE
+
+// ---------------------------------------------------------------------------
+// Lichtszenarien Tagesablauf
+//
+// THROW = Licht an, CLOSE = Licht aus. Beides aktualisiert den Turnout-Zustand,
+// die Lichter bleiben also im Dashboard sichtbar.
+//
+// Aufbau jedes Szenarios: die ROUTE schaltet den gemeinsamen Auftakt und
+// startet danach per START zwei unabhaengige Sub-Sequenzen, die als eigene
+// Tasks weiterlaufen. Dadurch ueberlappen sich die Bereiche statt im
+// Blocktakt zu schalten. Wichtig: START, nicht CALL - die Sub-Sequenzen
+// enden mit DONE und wuerden per CALL die ganze Task beenden.
+//
+// Die Schaltzeitpunkte sind per DELAYRANDOM gestreut, IFRANDOM variiert das
+// Verhalten. In den Ausschalt-Szenarien (Tags, Nachts) variiert IFRANDOM nur
+// die Reihenfolge, nie ob geschaltet wird - der Endzustand muss stimmen.
+//
+// Laufzeit je Szenario grob 2-5 Minuten, durch die Parallelitaet schwankend
+// (Tags am kuerzesten, Abends am laengsten).
+//
+// L_CROSS gehoert nicht dazu, der Bahnuebergang wird vom Zugbetrieb geschaltet.
+// ---------------------------------------------------------------------------
+
+SEQUENCE(SCENE_MORNING_SUB_BHF)
+    // Etwas spaeter wacht die Bahnhofswohnung auf.
+    DELAYRANDOM(10000, 70000)
+    THROW(L_BHF_DG)
+    DELAYRANDOM(8000, 20000)
+    THROW(L_BHF_OG1)
+    IFRANDOM(50)
+        DELAYRANDOM(1000, 20000)
+        THROW(L_BHF_OG2)
+    ENDIF
+    IFRANDOM(50)
+        DELAYRANDOM(20000, 50000)
+        CLOSE(L_BHF_OG1)
+    ENDIF
+DONE
+
+SEQUENCE(SCENE_MORNING_SUB_STW)
+    // Der Fahrdienstleiter geht nach oben, unten geht das Licht wieder aus.
+    DELAYRANDOM(1000, 70000)
+    THROW(L_STW_OG)
+    DELAYRANDOM(1000, 10000)
+    CLOSE(L_STW_EG)
+DONE
+
+ROUTE(SCENE_MORNING, "Licht: Morgens")
+    // Strassen- und Bahnhofsbeleuchtung brennen noch aus der Nacht,
+    // im Stellwerk geht Licht im Treppenhaus an.
+    THROW(L_BHF)
+    THROW(L_STREET)
+    THROW(L_STW_TR)
+
+    // Die Arbeitsbereiche fuellen sich.
+    DELAYRANDOM(5000, 70000)
+    THROW(L_STW_EG)
+    DELAYRANDOM(500, 15000)
+    THROW(L_BHF_EG)
+    DELAYRANDOM(1000, 15000)
+    THROW(L_WH_1)
+    DELAYRANDOM(500, 15000)
+    THROW(L_BHF_WH)
+
+    // Ab hier laufen Bahnhofswohnung und Stellwerk als eigene Tasks weiter,
+    // beide mit eigener Zufallsverzoegerung.
+    START(SCENE_MORNING_SUB_BHF)
+    START(SCENE_MORNING_SUB_STW)
+DONE
+
+SEQUENCE(SCENE_DAY_SUB_BHF)
+    // In der Wohnung wird das Licht nach und nach nicht mehr gebraucht.
+    // Die Reihenfolge wechselt, das Ergebnis bleibt gleich: alles aus.
+    DELAYRANDOM(5000, 60000)
+    IFRANDOM(50)
+        CLOSE(L_BHF_DG)
+        DELAYRANDOM(5000, 25000)
+        CLOSE(L_BHF_OG1)
+    ELSE
+        CLOSE(L_BHF_OG1)
+        DELAYRANDOM(5000, 25000)
+        CLOSE(L_BHF_DG)
+    ENDIF
+    DELAYRANDOM(5000, 25000)
+    CLOSE(L_BHF_OG2)
+DONE
+
+SEQUENCE(SCENE_DAY_SUB_WORK)
+    // Drinnen reicht jetzt auch das Tageslicht.
+    DELAYRANDOM(20000, 90000)
+    CLOSE(L_BHF_EG)
+    DELAYRANDOM(2000, 20000)
+    CLOSE(L_BHF_WH)
+    DELAYRANDOM(2000, 20000)
+    CLOSE(L_WH_1)
+    DELAYRANDOM(5000, 30000)
+    CLOSE(L_STW_OG)
+    DELAYRANDOM(1000, 15000)
+    CLOSE(L_STW_EG)
+DONE
+
+ROUTE(SCENE_DAY, "Licht: Tags")
+    // Es wird hell, die Aussenbeleuchtung wird zuerst abgeschaltet.
+    CLOSE(L_BHF)
+    DELAYRANDOM(1000, 6000)
+    CLOSE(L_STREET)
+    DELAYRANDOM(1000, 6000)
+    CLOSE(L_STW_TR)
+
+    // Wohnung und Arbeitsbereiche leeren sich unabhaengig voneinander.
+    START(SCENE_DAY_SUB_BHF)
+    START(SCENE_DAY_SUB_WORK)
+DONE
+
+SEQUENCE(SCENE_EVENING_SUB_STW)
+    // Feierabend im Stellwerk: der Fahrdienstleiter kommt herunter und geht,
+    // dabei brennt kurz das Licht im Erdgeschoss.
+    DELAYRANDOM(30000, 90000)
+    THROW(L_STW_EG)
+    DELAYRANDOM(2000, 8000)
+    CLOSE(L_STW_OG)
+    DELAYRANDOM(8000, 25000)
+    CLOSE(L_STW_EG)
+DONE
+
+SEQUENCE(SCENE_EVENING_SUB_BHF)
+    // Im Lager ist Schluss, dafuer wird die Bahnhofswohnung lebendig.
+    DELAYRANDOM(30000, 90000)
+    CLOSE(L_BHF_WH)
+    DELAYRANDOM(10000, 40000)
+    CLOSE(L_WH_1)
+    DELAYRANDOM(10000, 30000)
+    THROW(L_BHF_OG1)
+    IFRANDOM(70)
+        DELAYRANDOM(5000, 25000)
+        THROW(L_BHF_OG2)
+    ENDIF
+    DELAYRANDOM(30000, 60000)
+    THROW(L_BHF_DG)
+DONE
+
+ROUTE(SCENE_EVENING, "Licht: Abends")
+    // Es daemmert, drinnen wird zuerst Licht gemacht.
+    THROW(L_BHF_EG)
+    DELAYRANDOM(5000, 35000)
+    THROW(L_BHF_WH)
+    DELAYRANDOM(5000, 35000)
+    THROW(L_WH_1)
+    DELAYRANDOM(5000, 35000)
+    THROW(L_STW_OG)
+
+    // Danach die Aussenbeleuchtung.
+    DELAYRANDOM(20000, 60000)
+    THROW(L_STREET)
+    DELAYRANDOM(2000, 8000)
+    THROW(L_BHF)
+    DELAYRANDOM(2000, 8000)
+    THROW(L_STW_TR)
+
+    // Ab hier machen Stellwerk und Bahnhof unabhaengig voneinander Feierabend.
+    START(SCENE_EVENING_SUB_STW)
+    START(SCENE_EVENING_SUB_BHF)
+DONE
+
+SEQUENCE(SCENE_NIGHT_SUB_WORK)
+    // Die letzten Arbeitsbereiche werden verlassen.
+    DELAYRANDOM(10000, 50000)
+    CLOSE(L_BHF_EG)
+    DELAYRANDOM(5000, 25000)
+    CLOSE(L_BHF_WH)
+    DELAYRANDOM(5000, 25000)
+    CLOSE(L_STW_OG)
+    DELAYRANDOM(2000, 15000)
+    CLOSE(L_STW_EG)
+    DELAYRANDOM(20000, 50000)
+    CLOSE(L_WH_1)
+DONE
+
+SEQUENCE(SCENE_NIGHT_SUB_BHF)
+    // In der Wohnung geht zuletzt das Licht aus, wer zuerst schlafen geht
+    // wechselt. Im Dachgeschoss brennt es am laengsten.
+    DELAYRANDOM(40000, 90000)
+    IFRANDOM(50)
+        CLOSE(L_BHF_OG1)
+        DELAYRANDOM(20000, 60000)
+        CLOSE(L_BHF_OG2)
+    ELSE
+        CLOSE(L_BHF_OG2)
+        DELAYRANDOM(20000, 60000)
+        CLOSE(L_BHF_OG1)
+    ENDIF
+    DELAYRANDOM(40000, 90000)
+    CLOSE(L_BHF_DG)
+DONE
+
+ROUTE(SCENE_NIGHT, "Licht: Nachts")
+    // Strasse, Bahnhof und Stellwerkstreppe bleiben die ganze Nacht an.
+    // Explizit gesetzt, damit die Szene auch direkt aus "Tags" heraus stimmt.
+    THROW(L_STREET)
+    DELAYRANDOM(1000, 3000)
+    THROW(L_BHF)
+    DELAYRANDOM(1000, 3000)
+    THROW(L_STW_TR)
+
+    // Arbeitsbereiche und Wohnung schlafen unabhaengig voneinander ein.
+    START(SCENE_NIGHT_SUB_WORK)
+    START(SCENE_NIGHT_SUB_BHF)
 DONE
