@@ -1,3 +1,9 @@
+// Pulled in for the STEALTH boot-scene picker further down. EX-RAIL includes
+// this file several times; the header guard means this only takes effect on
+// the first, global-scope pass, so it is safe here despite later passes
+// including this file inside a function body.
+#include "NtpClock.h"
+
 ROSTER(3, "Default/New", "F0/F1/F2/F3/F4/F5/F6/F7")
 ROSTER(10, "V100/BR112", "Licht/Rot F/Rot R//Rangiergang")
 ROSTER(11, "V60/BR106", "Licht////Rangiergang")
@@ -32,6 +38,9 @@ TURNOUTL(W_11, W_11, "Weiche: W11 Tunnel Nord Aussen")
 TURNOUTL(W_12, W_12, "Weiche: W12 Tunnel Nord Auffahrt")
 
 
+// ACHTUNG L_WH_1 ist invers verdrahtet: CLOSE = an, THROW = aus.
+// In den Szenen daher fuer dieses Licht THROW/CLOSE vertauscht gegenueber
+// allen anderen. Beim Bearbeiten beachten.
 TURNOUTL(L_WH_1,    L_WH_1,    "Licht: Lager 1")
 TURNOUTL(L_BHF_EG,  L_BHF_EG,  "Licht: Bahnhofshalle EG")
 TURNOUTL(L_BHF_OG1, L_BHF_OG1, "Licht: Bahnhof OG 1")
@@ -54,6 +63,9 @@ AUTOSTART
     CALL(303) // Initialize signals
     CALL(305) // Init all turnouts to thrown position
     RESET(PARK_N_STOP)
+#if defined(ARDUINO_ARCH_ESP32) && defined(NTP_CLOCK)
+    START(SCENE_BOOT) // set the lighting to the current time of day once NTP is up
+#endif
 DONE
 
 SEQUENCE(303)
@@ -1645,7 +1657,7 @@ ROUTE(SCENE_MORNING, "Licht: Morgens")
     DELAYRANDOM(500, 15000)
     THROW(L_BHF_EG)
     DELAYRANDOM(1000, 15000)
-    THROW(L_WH_1)
+    CLOSE(L_WH_1)
     DELAYRANDOM(500, 15000)
     THROW(L_BHF_WH)
 
@@ -1679,7 +1691,7 @@ SEQUENCE(SCENE_DAY_SUB_WORK)
     DELAYRANDOM(2000, 20000)
     CLOSE(L_BHF_WH)
     DELAYRANDOM(2000, 20000)
-    CLOSE(L_WH_1)
+    THROW(L_WH_1)
     DELAYRANDOM(5000, 30000)
     CLOSE(L_STW_OG)
     DELAYRANDOM(1000, 15000)
@@ -1715,7 +1727,7 @@ SEQUENCE(SCENE_EVENING_SUB_BHF)
     DELAYRANDOM(30000, 90000)
     CLOSE(L_BHF_WH)
     DELAYRANDOM(10000, 40000)
-    CLOSE(L_WH_1)
+    THROW(L_WH_1)
     DELAYRANDOM(10000, 30000)
     THROW(L_BHF_OG1)
     IFRANDOM(70)
@@ -1732,7 +1744,7 @@ ROUTE(SCENE_EVENING, "Licht: Abends")
     DELAYRANDOM(5000, 35000)
     THROW(L_BHF_WH)
     DELAYRANDOM(5000, 35000)
-    THROW(L_WH_1)
+    CLOSE(L_WH_1)
     DELAYRANDOM(5000, 35000)
     THROW(L_STW_OG)
 
@@ -1760,7 +1772,7 @@ SEQUENCE(SCENE_NIGHT_SUB_WORK)
     DELAYRANDOM(2000, 15000)
     CLOSE(L_STW_EG)
     DELAYRANDOM(20000, 50000)
-    CLOSE(L_WH_1)
+    THROW(L_WH_1)
 DONE
 
 SEQUENCE(SCENE_NIGHT_SUB_BHF)
@@ -1793,3 +1805,105 @@ ROUTE(SCENE_NIGHT, "Licht: Nachts")
     START(SCENE_NIGHT_SUB_WORK)
     START(SCENE_NIGHT_SUB_BHF)
 DONE
+
+// ---------------------------------------------------------------------------
+// Anbindung an die Modelluhr
+//
+// Die Uhr kommt per NTP vom ESP32 (NTP_CLOCK in config.h). Mit
+// NTP_CLOCK_RATE 1 laeuft die Modellzeit wie die echte Uhr, bei hoeheren
+// Werten entsprechend schneller.
+//
+// clockEvent feuert genau einmal pro Modellminuten-Wechsel, jedes Szenario
+// startet also einmal pro Modelltag. Die ROUTEs bleiben daneben als
+// Handschalter im Dashboard nutzbar.
+//
+// FOLLOW statt START: der ONCLOCKTIME-Handler ist bereits eine eigene Task,
+// die kann direkt in die Szene springen statt noch eine zu erzeugen.
+// ---------------------------------------------------------------------------
+
+ONCLOCKTIME(6,0)
+    FOLLOW(SCENE_MORNING)
+DONE
+
+ONCLOCKTIME(9,0)
+    FOLLOW(SCENE_DAY)
+DONE
+
+ONCLOCKTIME(18,0)
+    FOLLOW(SCENE_EVENING)
+DONE
+
+ONCLOCKTIME(22,0)
+    FOLLOW(SCENE_NIGHT)
+DONE
+
+#if defined(ARDUINO_ARCH_ESP32) && defined(NTP_CLOCK)
+// ---------------------------------------------------------------------------
+// Startszene nach dem Boot
+//
+// Problem: die ONCLOCKTIME-Trigger feuern nur zum Zeitpunkt selbst. Nach einem
+// Neustart um 10:00 wuerde bis 18:00 nichts passieren. Also muss beim Start
+// einmal die zur aktuellen Uhrzeit passende Szene gesetzt werden.
+//
+// Das geht nicht aus AUTOSTART heraus mit EX-RAIL-Mitteln: zum Startzeitpunkt
+// ist das WLAN noch nicht oben und die Uhr nicht gestellt, und EX-RAIL kann
+// die Uhrzeit ohnehin nicht abfragen. Beides loest ein STEALTH-Block, der
+// rohes C++ im Kontext der Task ausfuehrt:
+//   - NtpClock::isSynced() wartet, bis NTP eine gueltige Zeit geliefert hat
+//   - CommandDistributor::retClockTime() liefert die Modellminute (0..1439)
+//   - die SCENE_SNAP_* Aliase sind hier ganz normale const int, siehe ALIAS
+//   - createNewTask() startet die passende Snap-Sequenz, kill() beendet uns
+//
+// Bis die Uhr steht, pollt die Sequenz sich per FOLLOW im 2s-Takt selbst.
+// Die Snap-Sequenzen setzen nur den Zielzustand, ohne Uebergang.
+// ---------------------------------------------------------------------------
+
+SEQUENCE(SCENE_BOOT)
+    STEALTH(
+      if (NtpClock::isSynced()) {
+        int16_t t = CommandDistributor::retClockTime();
+        int r = t < 6*60  ? SCENE_SNAP_NIGHT
+              : t < 9*60  ? SCENE_SNAP_MORNING
+              : t < 18*60 ? SCENE_SNAP_DAY
+              : t < 22*60 ? SCENE_SNAP_EVENING
+              :             SCENE_SNAP_NIGHT;
+        RMFT2::createNewTask(r, 0);
+        kill();
+      }
+    )
+    DELAY(2000)
+    FOLLOW(SCENE_BOOT)
+DONE
+
+SEQUENCE(SCENE_SNAP_MORNING)
+    // 06:00-08:59, Betrieb laeuft, nur das Stellwerk-EG ist schon wieder aus.
+    THROW(L_STREET)  THROW(L_BHF)     THROW(L_STW_TR)
+    THROW(L_STW_OG)  CLOSE(L_STW_EG)
+    THROW(L_BHF_EG)  THROW(L_BHF_WH)  CLOSE(L_WH_1)
+    THROW(L_BHF_DG)  THROW(L_BHF_OG1) THROW(L_BHF_OG2)
+DONE
+
+SEQUENCE(SCENE_SNAP_DAY)
+    // 09:00-17:59, Tageslicht, alles aus.
+    CLOSE(L_STREET)  CLOSE(L_BHF)     CLOSE(L_STW_TR)
+    CLOSE(L_STW_OG)  CLOSE(L_STW_EG)
+    CLOSE(L_BHF_EG)  CLOSE(L_BHF_WH)  THROW(L_WH_1)
+    CLOSE(L_BHF_DG)  CLOSE(L_BHF_OG1) CLOSE(L_BHF_OG2)
+DONE
+
+SEQUENCE(SCENE_SNAP_EVENING)
+    // 18:00-21:59, Feierabend vorbei, die Wohnung ist bewohnt.
+    THROW(L_STREET)  THROW(L_BHF)     THROW(L_STW_TR)
+    CLOSE(L_STW_OG)  CLOSE(L_STW_EG)
+    THROW(L_BHF_EG)  CLOSE(L_BHF_WH)  THROW(L_WH_1)
+    THROW(L_BHF_DG)  THROW(L_BHF_OG1) THROW(L_BHF_OG2)
+DONE
+
+SEQUENCE(SCENE_SNAP_NIGHT)
+    // 22:00-05:59, nur die Aussenbeleuchtung brennt.
+    THROW(L_STREET)  THROW(L_BHF)     THROW(L_STW_TR)
+    CLOSE(L_STW_OG)  CLOSE(L_STW_EG)
+    CLOSE(L_BHF_EG)  CLOSE(L_BHF_WH)  THROW(L_WH_1)
+    CLOSE(L_BHF_DG)  CLOSE(L_BHF_OG1) CLOSE(L_BHF_OG2)
+DONE
+#endif // ARDUINO_ARCH_ESP32 && NTP_CLOCK
